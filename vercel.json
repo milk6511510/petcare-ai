@@ -1,0 +1,7 @@
+{
+  "rewrites": [
+    { "source": "/landing", "destination": "/landing.html" },
+    { "source": "/privacy", "destination": "/privacy.html" },
+    { "source": "/((?!api/|assets/|landing\\.html|privacy\\.html|favicon\\.svg).*)", "destination": "/index.html" }
+  ]
+}
