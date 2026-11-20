@@ -25,6 +25,7 @@ import { AuthModal } from './components/AuthModal';
 import { PaywallModal } from './components/PaywallModal';
 import { ReportModal } from './components/ReportModal';
 import { SettingsTab } from './components/SettingsTab';
+import { PetCompanion3D, getPetMascotSrc } from './components/PetCompanion3D';
 import { ThemeSwitcher } from './components/ThemeSwitcher';
 import { apiFetch, ApiError } from './lib/api';
 import { applyTheme, getStoredThemeId, THEME_OPTIONS, type ThemeId } from './lib/theme';
@@ -503,8 +504,10 @@ export default function App() {
     }
   }
 
+  const selectedPet = pets.find((p) => p.id === selectedPetId) ?? pets[0] ?? GUEST_DEFAULT_PETS[0];
   const filteredSchedules = schedules.filter((s) => s.pet_id === selectedPetId || pets.length <= 1);
   const doneCount = filteredSchedules.filter((s) => Boolean(s.today_log_id)).length;
+  const pendingCount = Math.max(0, filteredSchedules.length - doneCount);
   const unresolvedConflicts = conflicts.filter((c) => c.resolution_state === 'unresolved');
 
   function highlightClass(level?: 'high' | 'low' | 'missing') {
@@ -691,7 +694,16 @@ export default function App() {
                           : 'bg-white/75 text-[var(--ink-primary)] hover:bg-white border border-white'
                       }`}
                     >
-                      <span>{pet.avatar_emoji}</span>
+                      {pet.species === 'other' ? (
+                        <span>{pet.avatar_emoji}</span>
+                      ) : (
+                        <img
+                          src={getPetMascotSrc(pet.species)}
+                          alt={pet.name}
+                          className="h-6 w-6 rounded-full bg-white/90 object-contain p-0.5 shadow-sm"
+                          draggable={false}
+                        />
+                      )}
                       <span>{pet.name}</span>
                       {pet.breed && <span className="opacity-70">({pet.breed})</span>}
                     </button>
@@ -735,44 +747,79 @@ export default function App() {
               )}
             </div>
 
-            {/* Today Summary Metric Card */}
-            <div className="liquid-glass rounded-[26px] p-5 flex flex-wrap items-center justify-between gap-4">
-              <div>
+            {/* Today Summary Metric Card with Interactive 3D Pet Companion */}
+            <div className="liquid-glass rounded-[28px] p-5 sm:p-6 flex flex-col sm:flex-row items-center justify-between gap-5">
+              <div className="flex-1 w-full">
                 <div className="flex items-center gap-2 text-xs font-bold text-[var(--brand-secondary)]">
                   <CalendarDays className="h-4 w-4" />
                   <span>今日照護進度 ({new Date().toLocaleDateString('zh-TW')})</span>
                 </div>
-                <div className="mt-1 text-2xl font-black">
+                <div className="mt-1 text-2xl font-black tracking-tight">
                   已完成 {doneCount} / {filteredSchedules.length} 次照護打卡
                 </div>
-                <p className="text-xs text-[var(--ink-secondary)] mt-0.5">
+                <div className="mt-2.5 h-2 w-full max-w-sm overflow-hidden rounded-full bg-white/75 border border-white">
+                  <div
+                    className="h-full rounded-full transition-all duration-500"
+                    style={{
+                      width: `${filteredSchedules.length ? Math.round((doneCount / filteredSchedules.length) * 100) : 0}%`,
+                      background:
+                        filteredSchedules.length > 0 && doneCount >= filteredSchedules.length
+                          ? 'var(--status-ok)'
+                          : 'linear-gradient(90deg, var(--brand-primary), var(--brand-gold))'
+                    }}
+                  />
+                </div>
+                <p className="text-xs text-[var(--ink-secondary)] mt-2">
                   點擊「我已餵藥」即寫入資料庫，並自動為其他家人消退該時段重複提醒。
                 </p>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('ocr')}
+                    className="flex items-center gap-1.5 rounded-2xl bg-[var(--brand-primary)] px-4 py-2.5 text-xs font-bold text-white shadow-md"
+                    style={{ boxShadow: '0 8px 18px var(--brand-primary-shadow)' }}
+                  >
+                    <Camera className="h-4 w-4" /> 拍藥袋建排程
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setReportOpen(true)}
+                    className="flex items-center gap-1.5 rounded-2xl bg-white/85 px-4 py-2.5 text-xs font-bold text-[var(--ink-primary)] border border-white"
+                  >
+                    <FileText className="h-4 w-4 text-[var(--brand-secondary)]" /> 匯出紀錄
+                  </button>
+                </div>
               </div>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('ocr')}
-                  className="flex items-center gap-1.5 rounded-2xl bg-[var(--brand-primary)] px-4 py-2.5 text-xs font-bold text-white shadow-md"
-                  style={{ boxShadow: '0 8px 18px var(--brand-primary-shadow)' }}
-                >
-                  <Camera className="h-4 w-4" /> 拍藥袋建排程
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setReportOpen(true)}
-                  className="flex items-center gap-1.5 rounded-2xl bg-white/85 px-4 py-2.5 text-xs font-bold text-[var(--ink-primary)] border border-white"
-                >
-                  <FileText className="h-4 w-4 text-[var(--brand-secondary)]" /> 匯出紀錄
-                </button>
+
+              <div className="shrink-0 rounded-[24px] bg-white/55 px-4 py-3 border border-white/80 shadow-inner">
+                <PetCompanion3D
+                  species={selectedPet.species}
+                  petName={selectedPet.name}
+                  pendingCount={pendingCount}
+                  doneCount={doneCount}
+                  totalCount={filteredSchedules.length}
+                />
               </div>
             </div>
 
             {/* Today Schedule List */}
             <div className="space-y-3">
               {filteredSchedules.length === 0 ? (
-                <div className="liquid-glass rounded-[24px] p-8 text-center text-sm text-[var(--ink-secondary)]">
-                  此毛孩目前尚無排程，點擊右上角「拍藥袋建排程」即可快速建立。
+                <div className="liquid-glass rounded-[24px] p-7 flex flex-col items-center gap-2 text-center text-sm text-[var(--ink-secondary)]">
+                  <PetCompanion3D
+                    species={selectedPet.species}
+                    petName={selectedPet.name}
+                    pendingCount={0}
+                    doneCount={0}
+                    totalCount={0}
+                    compact
+                  />
+                  <p className="font-bold text-[var(--ink-primary)]">
+                    {selectedPet.name}目前尚無照護排程
+                  </p>
+                  <p className="text-xs text-[var(--ink-secondary)]">
+                    點擊上方「拍藥袋建排程」，3 秒就能幫 {selectedPet.name} 建立每日提醒喔！
+                  </p>
                 </div>
               ) : (
                 filteredSchedules.map((item) => {
@@ -847,15 +894,25 @@ export default function App() {
         {activeTab === 'ocr' && (
           <div className="space-y-4">
             <div className="liquid-glass rounded-[28px] p-5 sm:p-6">
-              <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
-                <div>
-                  <h2 className="text-lg font-extrabold flex items-center gap-2">
-                    <Camera className="h-5 w-5 text-[var(--brand-primary)]" />
-                    拍立得藥袋 OCR 轉錄・人機協同核對
-                  </h2>
-                  <p className="text-xs text-[var(--ink-secondary)]">
-                    辨識信心 &lt; 85% 自動留空標黃、必填缺失標紅，並強制經飼主目視核對才建立鬧鐘（100% 虛擬示範藥名）。
-                  </p>
+              <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+                <div className="flex items-center gap-3">
+                  <PetCompanion3D
+                    species={selectedPet.species}
+                    petName={selectedPet.name}
+                    pendingCount={pendingCount}
+                    doneCount={doneCount}
+                    totalCount={filteredSchedules.length}
+                    compact
+                  />
+                  <div>
+                    <h2 className="text-lg font-extrabold flex items-center gap-2">
+                      <Camera className="h-5 w-5 text-[var(--brand-primary)]" />
+                      拍立得藥袋 OCR 轉錄・人機協同核對
+                    </h2>
+                    <p className="text-xs text-[var(--ink-secondary)]">
+                      辨識信心 &lt; 85% 自動留空標黃、必填缺失標紅，並強制經飼主目視核對才建立鬧鐘（100% 虛擬示範藥名）。
+                    </p>
+                  </div>
                 </div>
                 <div className="rounded-2xl bg-white/80 px-3.5 py-2 text-xs font-bold">
                   本月額度：
@@ -1194,10 +1251,20 @@ export default function App() {
 
               <div className="space-y-2.5">
                 {historyLogs.length === 0 ? (
-                  <div className="rounded-2xl bg-white/65 p-6 text-center text-xs text-[var(--ink-secondary)]">
-                    {context
-                      ? '目前尚無歷史打卡紀錄，回到「今日看板」完成首筆打卡後即可在此查閱！'
-                      : '登入雲端帳號後，您的每日餵藥打卡歷程將永久同步至此時間軸。'}
+                  <div className="rounded-2xl bg-white/65 p-6 flex flex-col items-center gap-2 text-center text-xs text-[var(--ink-secondary)]">
+                    <PetCompanion3D
+                      species={selectedPet.species}
+                      petName={selectedPet.name}
+                      pendingCount={pendingCount}
+                      doneCount={doneCount}
+                      totalCount={filteredSchedules.length}
+                      compact
+                    />
+                    <span>
+                      {context
+                        ? '目前尚無歷史打卡紀錄，回到「今日看板」完成首筆打卡後即可在此查閱！'
+                        : '登入雲端帳號後，您的每日餵藥打卡歷程將永久同步至此時間軸。'}
+                    </span>
                   </div>
                 ) : (
                   historyLogs.map((log) => (

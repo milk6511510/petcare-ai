@@ -874,13 +874,213 @@
     }
 
     .pill-left {
-      bottom: 20px;
-      left: -24px;
+      top: 64px;
+      left: -28px;
+      animation: floatPulse 3.6s ease-in-out infinite;
     }
 
     .pill-right {
-      top: 40px;
+      top: 14px;
       right: -20px;
+      animation: floatPulse 3.1s ease-in-out infinite 0.6s;
+    }
+
+    /* --- 3D Chibi Mascot Companions --- */
+    .hero-mascots-layer {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 4;
+    }
+
+    .hero-mascot {
+      position: absolute;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      pointer-events: auto;
+      cursor: pointer;
+      background: none;
+      border: none;
+      padding: 0;
+      outline: none;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .hero-mascot-shiba {
+      bottom: -24px;
+      left: -58px;
+    }
+
+    .hero-mascot-kitty {
+      bottom: -14px;
+      right: -52px;
+    }
+
+    .hero-mascot-stage {
+      position: relative;
+      width: 132px;
+      height: 132px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .hero-mascot-kitty .hero-mascot-stage {
+      width: 124px;
+      height: 124px;
+    }
+
+    .hero-mascot-aura {
+      position: absolute;
+      inset: 10px;
+      border-radius: 50%;
+      background: radial-gradient(circle, var(--brand-primary-soft) 0%, rgba(216, 156, 74, 0.16) 55%, transparent 75%);
+      transition: transform 0.25s ease;
+    }
+
+    .hero-mascot:hover .hero-mascot-aura {
+      transform: scale(1.12);
+    }
+
+    .hero-mascot-img {
+      position: relative;
+      z-index: 2;
+      width: 118px;
+      height: 118px;
+      object-fit: contain;
+      filter: drop-shadow(0 14px 18px rgba(46, 36, 30, 0.2));
+      transition: transform 0.2s ease;
+    }
+
+    .hero-mascot-kitty .hero-mascot-img {
+      width: 112px;
+      height: 112px;
+    }
+
+    .hero-mascot-shiba .hero-mascot-img {
+      animation: heroPetFloatA 4.4s ease-in-out infinite;
+    }
+
+    .hero-mascot-kitty .hero-mascot-img {
+      animation: heroPetFloatB 4.1s ease-in-out infinite 0.5s;
+    }
+
+    .hero-mascot.is-jumping .hero-mascot-img {
+      animation: heroPetJump 0.65s cubic-bezier(0.34, 1.56, 0.64, 1) forwards !important;
+    }
+
+    .hero-mascot-shadow {
+      position: absolute;
+      bottom: 6px;
+      width: 72px;
+      height: 12px;
+      border-radius: 999px;
+      background: var(--ink-primary);
+      opacity: 0.18;
+      filter: blur(4px);
+      animation: heroPetShadow 4.4s ease-in-out infinite;
+    }
+
+    .hero-mascot-bubble {
+      position: relative;
+      z-index: 3;
+      margin-bottom: 2px;
+      background: rgba(255, 255, 255, 0.96);
+      border: 1px solid var(--border-subtle);
+      color: var(--ink-primary);
+      font-size: 0.72rem;
+      font-weight: 700;
+      padding: 5px 10px;
+      border-radius: 999px;
+      box-shadow: var(--shadow-sm);
+      white-space: nowrap;
+      transition: transform 0.2s ease, border-color 0.2s ease;
+    }
+
+    .hero-mascot:hover .hero-mascot-bubble {
+      transform: translateY(-2px);
+      border-color: var(--brand-primary-border);
+    }
+
+    .hero-heart-pop {
+      position: absolute;
+      z-index: 10;
+      font-size: 1rem;
+      pointer-events: none;
+      animation: heroHeartPop 1s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    }
+
+    .spotlight-pet-duo {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 14px;
+      padding: 6px 12px 6px 8px;
+      border-radius: var(--radius-full);
+      background: var(--bg-card-alt);
+      border: 1px solid var(--border-subtle);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .spotlight-pet-duo img {
+      width: 34px;
+      height: 34px;
+      object-fit: contain;
+      filter: drop-shadow(0 4px 6px rgba(46, 36, 30, 0.15));
+      animation: heroPetFloatA 4s ease-in-out infinite;
+    }
+
+    .spotlight-pet-duo img:nth-child(2) {
+      animation: heroPetFloatB 3.8s ease-in-out infinite 0.4s;
+    }
+
+    .spotlight-pet-duo span {
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: var(--ink-secondary);
+      margin-left: 4px;
+    }
+
+    @keyframes heroPetFloatA {
+      0%, 100% { transform: translateY(0) rotate(-2deg) scale(1); }
+      50% { transform: translateY(-8px) rotate(2deg) scale(1.02); }
+    }
+
+    @keyframes heroPetFloatB {
+      0%, 100% { transform: translateY(0) rotate(2deg) scale(1); }
+      50% { transform: translateY(-9px) rotate(-2.5deg) scale(1.025); }
+    }
+
+    @keyframes heroPetJump {
+      0% { transform: translateY(0) scale(1, 1); }
+      22% { transform: translateY(4px) scale(1.08, 0.9); }
+      50% { transform: translateY(-18px) scale(0.95, 1.07); }
+      78% { transform: translateY(2px) scale(1.03, 0.97); }
+      100% { transform: translateY(0) scale(1, 1); }
+    }
+
+    @keyframes heroPetShadow {
+      0%, 100% { transform: scaleX(1); opacity: 0.2; }
+      50% { transform: scaleX(0.82); opacity: 0.11; }
+    }
+
+    @keyframes heroHeartPop {
+      0% { transform: translate(0, 0) scale(0.5); opacity: 0; }
+      20% { opacity: 1; }
+      100% { transform: translate(var(--tx, 0px), -48px) scale(1.15); opacity: 0; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .hero-mascot-shiba .hero-mascot-img,
+      .hero-mascot-kitty .hero-mascot-img,
+      .hero-mascot-shadow,
+      .spotlight-pet-duo img,
+      .pill-left,
+      .pill-right {
+        animation: none !important;
+      }
     }
 
     /* --- Social Proof Stats Bar --- */
@@ -1621,6 +1821,33 @@
       .hero-mockup-wrapper {
         margin-top: 24px;
       }
+      .hero-mascots-layer {
+        position: static;
+        display: flex;
+        align-items: flex-end;
+        justify-content: center;
+        gap: 16px;
+        margin-top: 22px;
+      }
+      .hero-mascot {
+        position: static;
+      }
+      .hero-mascot-stage {
+        width: 112px;
+        height: 112px;
+      }
+      .hero-mascot-kitty .hero-mascot-stage {
+        width: 108px;
+        height: 108px;
+      }
+      .hero-mascot-img {
+        width: 100px;
+        height: 100px;
+      }
+      .hero-mascot-kitty .hero-mascot-img {
+        width: 96px;
+        height: 96px;
+      }
       .pain-cards-grid, .steps-grid, .pricing-cards-grid {
         grid-template-columns: 1fr;
       }
@@ -1906,6 +2133,37 @@
               <span style="color: var(--brand-primary); font-weight: 700;">進行中</span>
             </div>
           </div>
+
+          <!-- Animated 3D Blind-Box Shiba & Kitty Companions -->
+          <div class="hero-mascots-layer" aria-label="互動式 3D 毛孩夥伴">
+            <button
+              type="button"
+              class="hero-mascot hero-mascot-shiba"
+              onclick="interactHeroMascot(this, 'dog')"
+              title="點一下摸摸柴犬波波"
+            >
+              <span class="hero-mascot-bubble" data-quote-idx="0">汪！爸爸已打卡 💛</span>
+              <div class="hero-mascot-stage">
+                <span class="hero-mascot-aura"></span>
+                <img src="/assets/pets/shiba-bobo.webp" alt="3D 柴犬波波公仔" class="hero-mascot-img" draggable="false">
+                <span class="hero-mascot-shadow"></span>
+              </div>
+            </button>
+
+            <button
+              type="button"
+              class="hero-mascot hero-mascot-kitty"
+              onclick="interactHeroMascot(this, 'cat')"
+              title="點一下摸摸小橘貓"
+            >
+              <span class="hero-mascot-bubble" data-quote-idx="0">喵～藥袋 3 秒建檔 ✨</span>
+              <div class="hero-mascot-stage">
+                <span class="hero-mascot-aura"></span>
+                <img src="/assets/pets/kitty-mikan.webp" alt="3D 暖橘貓咪公仔" class="hero-mascot-img" draggable="false">
+                <span class="hero-mascot-shadow"></span>
+              </div>
+            </button>
+          </div>
         </div>
       </div>
     </section>
@@ -2065,6 +2323,11 @@
 
           <!-- Mockup Timeline Box -->
           <div class="timeline-mock-box">
+            <div class="spotlight-pet-duo">
+              <img src="/assets/pets/shiba-bobo.webp" alt="柴犬波波" draggable="false">
+              <img src="/assets/pets/kitty-mikan.webp" alt="橘貓小咪" draggable="false">
+              <span>波波 &amp; 橘子・全家即時守護中</span>
+            </div>
             <div style="font-weight: 700; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;">
               <span>今日照護排程（波波 / 柴犬）</span>
               <span style="font-size: 0.8rem; color: var(--brand-primary);">家庭共享中 (最多 10 人)</span>
@@ -2468,6 +2731,52 @@
       amber: { label: '陽光橘金活力', swatches: ['#F07828', '#D99B26', '#FFFBF2'] },
       sand: { label: '暖砂大地珊瑚', swatches: ['#FF7E47', '#A67554', '#FAF7F2'] }
     };
+
+    const HERO_MASCOT_QUOTES = {
+      dog: [
+        '汪！爸爸已打卡 💛',
+        '今天也要準時照護喔 🐾',
+        '摸摸波波！好開心 ✨'
+      ],
+      cat: [
+        '喵～藥袋 3 秒建檔 ✨',
+        '呼嚕嚕…不怕重複餵 💛',
+        '橘子最喜歡溫柔的你 🐾'
+      ]
+    };
+
+    function interactHeroMascot(btn, species) {
+      if (!btn) return;
+      btn.classList.remove('is-jumping');
+      void btn.offsetWidth;
+      btn.classList.add('is-jumping');
+      setTimeout(() => btn.classList.remove('is-jumping'), 680);
+
+      const bubble = btn.querySelector('.hero-mascot-bubble');
+      const quotes = HERO_MASCOT_QUOTES[species] || HERO_MASCOT_QUOTES.dog;
+      if (bubble) {
+        const nextIdx = (Number(bubble.getAttribute('data-quote-idx') || '0') + 1) % quotes.length;
+        bubble.setAttribute('data-quote-idx', String(nextIdx));
+        bubble.textContent = quotes[nextIdx];
+      }
+
+      const stage = btn.querySelector('.hero-mascot-stage');
+      if (stage) {
+        const glyphs = species === 'cat' ? ['💛', '✨', '🐾', '🩷'] : ['💛', '✨', '🐾', '🧡'];
+        for (let i = 0; i < 4; i++) {
+          const span = document.createElement('span');
+          span.className = 'hero-heart-pop';
+          span.textContent = glyphs[i % glyphs.length];
+          span.style.left = (28 + i * 16) + '%';
+          span.style.top = (22 + (i % 2) * 14) + '%';
+          span.style.setProperty('--tx', ((i - 1.5) * 20) + 'px');
+          stage.appendChild(span);
+          setTimeout(() => span.remove(), 1050);
+        }
+      }
+
+      trackEvent('mascot_interact', { species: species, page: 'landing' });
+    }
 
     function syncThemeUI(themeId) {
       const id = THEME_META[themeId] ? themeId : 'caramel';
