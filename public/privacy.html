@@ -1,20 +1,71 @@
 <!DOCTYPE html>
-<html lang="zh-TW">
+<html lang="zh-TW" data-theme="caramel">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>隱私權政策與個人資料保護聲明｜PetCare AI 拍立得寵物護理</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <script>
+    (function () {
+      try {
+        var t = localStorage.getItem('petcare_theme');
+        if (t === 'caramel' || t === 'peach' || t === 'amber' || t === 'sand') {
+          document.documentElement.setAttribute('data-theme', t);
+        }
+      } catch (e) {}
+    })();
+  </script>
   <style>
-    :root {
-      --bg-warm: #FAF8F5;
+    :root,
+    [data-theme="caramel"] {
+      --bg-warm: #FBF7F0;
       --bg-surface: #FFFFFF;
+      --bg-highlight: #FAF4EB;
+      --border-highlight: #E8DDD0;
+      --ink-primary: #2E241E;
+      --ink-secondary: #66574C;
+      --ink-muted: #948579;
+      --brand-primary: #C47449;
+      --border-subtle: #E8DDD0;
+      --shadow-card: 0 4px 20px rgba(46, 36, 30, 0.05);
+      --radius-md: 16px;
+      --max-width: 860px;
+    }
+    [data-theme="peach"] {
+      --bg-warm: #FFF9F5;
+      --bg-surface: #FFFFFF;
+      --bg-highlight: #FFF5EE;
+      --border-highlight: #F0E1D8;
+      --ink-primary: #332521;
+      --ink-secondary: #6B5650;
+      --ink-muted: #9A857E;
+      --brand-primary: #FF7E5F;
+      --border-subtle: #F0E1D8;
+      --shadow-card: 0 4px 20px rgba(51, 37, 33, 0.05);
+    }
+    [data-theme="amber"] {
+      --bg-warm: #FFFBF2;
+      --bg-surface: #FFFFFF;
+      --bg-highlight: #FFF7E6;
+      --border-highlight: #ECE0CB;
+      --ink-primary: #2E251A;
+      --ink-secondary: #635542;
+      --ink-muted: #94846F;
+      --brand-primary: #F07828;
+      --border-subtle: #ECE0CB;
+      --shadow-card: 0 4px 20px rgba(46, 37, 26, 0.05);
+    }
+    [data-theme="sand"] {
+      --bg-warm: #FAF7F2;
+      --bg-surface: #FFFFFF;
+      --bg-highlight: #F8F3EC;
+      --border-highlight: #E8E2D9;
       --ink-primary: #2B2623;
       --ink-secondary: #5C554F;
       --ink-muted: #8E857C;
-      --brand-primary: #E06D53;
+      --brand-primary: #FF7E47;
       --border-subtle: #E8E2D9;
-      --radius-md: 16px;
-      --max-width: 860px;
+      --shadow-card: 0 4px 20px rgba(43, 38, 35, 0.05);
     }
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
@@ -23,6 +74,7 @@
       line-height: 1.8;
       padding: 40px 20px;
       margin: 0;
+      transition: background-color 0.25s ease, color 0.25s ease;
     }
     .container {
       max-width: var(--max-width);
@@ -31,7 +83,15 @@
       padding: 48px 40px;
       border-radius: var(--radius-md);
       border: 1px solid var(--border-subtle);
-      box-shadow: 0 4px 20px rgba(43, 38, 35, 0.05);
+      box-shadow: var(--shadow-card);
+    }
+    .top-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 24px;
     }
     .back-link {
       display: inline-flex;
@@ -41,46 +101,189 @@
       text-decoration: none;
       font-weight: 600;
       font-size: 0.95rem;
-      margin-bottom: 24px;
     }
-    h1 { font-size: 2rem; font-weight: 800; margin-bottom: 8px; color: var(--ink-primary); }
-    .meta-tag { font-size: 0.85rem; color: var(--ink-muted); margin-bottom: 32px; border-bottom: 1px solid var(--border-subtle); padding-bottom: 16px; }
-    h2 { font-size: 1.25rem; font-weight: 700; margin-top: 32px; margin-bottom: 12px; color: var(--ink-primary); border-left: 4px solid var(--brand-primary); padding-left: 12px; }
-    p, ul, ol { font-size: 0.98rem; color: var(--ink-secondary); margin-bottom: 16px; }
-    ul, ol { padding-left: 24px; }
-    li { margin-bottom: 8px; }
-    .highlight-box { background: #FAF5F0; border: 1px solid #EFE4D6; border-radius: 8px; padding: 16px 20px; margin: 20px 0; font-size: 0.92rem; }
-    .footer-note { margin-top: 48px; padding-top: 24px; border-top: 1px solid var(--border-subtle); font-size: 0.85rem; color: var(--ink-muted); text-align: center; }
+    .theme-pills {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--bg-highlight);
+      border: 1px solid var(--border-subtle);
+      padding: 4px 8px;
+      border-radius: 9999px;
+    }
+    .theme-dot-btn {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      border: 2px solid #fff;
+      cursor: pointer;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.14);
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+      padding: 0;
+    }
+    .theme-dot-btn:hover {
+      transform: scale(1.1);
+    }
+    .theme-dot-btn.active {
+      box-shadow: 0 0 0 2px var(--brand-primary);
+    }
+    h1 {
+      font-size: 2rem;
+      font-weight: 800;
+      margin-bottom: 8px;
+      color: var(--ink-primary);
+    }
+    .meta-tag {
+      font-size: 0.85rem;
+      color: var(--ink-muted);
+      margin-bottom: 32px;
+      border-bottom: 1px solid var(--border-subtle);
+      padding-bottom: 16px;
+    }
+    h2 {
+      font-size: 1.25rem;
+      font-weight: 700;
+      margin-top: 32px;
+      margin-bottom: 12px;
+      color: var(--ink-primary);
+      border-left: 4px solid var(--brand-primary);
+      padding-left: 12px;
+    }
+    p, ul, ol {
+      font-size: 0.98rem;
+      color: var(--ink-secondary);
+      margin-bottom: 16px;
+    }
+    ul, ol {
+      padding-left: 24px;
+    }
+    li {
+      margin-bottom: 8px;
+    }
+    .highlight-box {
+      background: var(--bg-highlight);
+      border: 1px solid var(--border-highlight);
+      border-radius: 8px;
+      padding: 16px 20px;
+      margin: 20px 0;
+      font-size: 0.92rem;
+    }
+    .footer-note {
+      margin-top: 48px;
+      padding-top: 24px;
+      border-top: 1px solid var(--border-subtle);
+      font-size: 0.85rem;
+      color: var(--ink-muted);
+      text-align: center;
+    }
+    @media (max-width: 640px) {
+      .container {
+        padding: 32px 20px;
+      }
+    }
   </style>
 </head>
 <body>
   <div class="container">
-    <a href="/landing.html" class="back-link">← 返回 PetCare AI 首頁</a>
+    <div class="top-bar">
+      <a href="/landing" class="back-link">← 返回 PetCare AI 首頁</a>
+      <div class="theme-pills" aria-label="切換暖色系主題">
+        <button type="button" class="theme-dot-btn" data-theme-pick="caramel" title="日系焦糖奶茶" style="background: linear-gradient(135deg, #C47449, #D89C4A);" onclick="setPrivacyTheme('caramel')"></button>
+        <button type="button" class="theme-dot-btn" data-theme-pick="peach" title="奶油蜜桃珊瑚" style="background: linear-gradient(135deg, #FF7E5F, #F2A65A);" onclick="setPrivacyTheme('peach')"></button>
+        <button type="button" class="theme-dot-btn" data-theme-pick="amber" title="陽光橘金活力" style="background: linear-gradient(135deg, #F07828, #D99B26);" onclick="setPrivacyTheme('amber')"></button>
+        <button type="button" class="theme-dot-btn" data-theme-pick="sand" title="暖砂大地珊瑚" style="background: linear-gradient(135deg, #FF7E47, #A67554);" onclick="setPrivacyTheme('sand')"></button>
+      </div>
+    </div>
     <h1>隱私權政策與個人資料保護聲明</h1>
     <div class="meta-tag">
-      生效日期：2026 年 11 月 19 日｜版本：v1.0｜主管機關規範：符合台灣《個人資料保護法》第 8 條告知義務
+      生效日期：2026 年 11 月 19 日｜版本：v1.0 (草案)｜主管機關規範：符合台灣《個人資料保護法》第 8 條告知義務
     </div>
+
     <div class="highlight-box">
       <strong>【特別聲明】</strong><br>
       PetCare AI 拍立得寵物護理（以下簡稱「本服務」）非常重視您的隱私權與毛孩健康資料安全。本服務定位為<strong>日常生活生產力與排程聯絡簿工具</strong>，絕非醫療診斷機構。本政策旨在向您清楚說明我們如何蒐集、處理、利用及保護您的個人資料。
     </div>
+
     <h2>一、 個人資料之蒐集者（主體）</h2>
-    <p>本服務之個人資料蒐集主體為：<strong>【PetCare AI 照護科技股份有限公司（籌備處）】</strong>（以下簡稱「本公司」或「我們」）。</p>
+    <p>
+      本服務之個人資料蒐集主體為：<strong>【PetCare AI 照護科技股份有限公司（籌備處）】</strong>（以下簡稱「本公司」或「我們」）。
+    </p>
+
     <h2>二、 個人資料之蒐集目的</h2>
-    <p>依據中華民國法務部頒布之「個人資料保護法之特定目的及個人資料之類別」，本服務蒐集您個人資料之目的包含：040 行銷、069 契約與類似契約事務、090 消費者與客戶管理服務、148 網路購物及其他電子商務服務、157 調查統計與研究分析。</p>
-    <h2>三、 個人資料之類別</h2>
+    <p>
+      依據中華民國法務部頒布之「個人資料保護法之特定目的及個人資料之類別」，本服務蒐集您個人資料之目的包含：
+    </p>
     <ul>
-      <li><strong>識別個人者（C001）</strong>：電子郵件地址（Email）、自願填寫之稱謂或顯示名稱。</li>
-      <li><strong>寵物照護背景偏好</strong>：照護寵物類別與照護排程紀錄。</li>
-      <li><strong>系統技術紀錄</strong>：連線時區與去識別化分析紀錄。</li>
+      <li><strong>040 行銷</strong>（包含產品最新消息、早鳥方案優惠通知、問卷調查）</li>
+      <li><strong>069 契約、類似契約或其他法律關係事務</strong>（包含等待名單登記、封測資格確認與服務提供）</li>
+      <li><strong>090 消費者、客戶管理與服務</strong>（包含使用者支援、意見回饋處理與通知發送）</li>
+      <li><strong>148 網路購物及其他電子商務服務</strong>（包含日後加值服務訂閱通知）</li>
+      <li><strong>157 調查、統計與研究分析</strong>（以去識別化之形式進行服務體驗與辨識準確率優化）</li>
     </ul>
-    <h2>四、 當事人依個資法第 3 條所得行使之權利</h2>
-    <p>您可隨時透過 App 設定頁「申請永久刪除雲端帳號與個資」或寄信至 <strong>privacy@petcare-ai.example.com</strong> 請求查詢、閱覽、複製、更正、停止利用或永久刪除。</p>
-    <h2>五、 醫療免責與安全聲明</h2>
-    <p>本服務所提供之藥袋辨識與鬧鐘排程功能，僅為使用者日常照護紀錄與備忘輔助，<strong>絕不構成任何獸醫醫療診斷、處方或治療建議</strong>。毛孩若有任何健康疑慮或異狀，應立即洽詢合格實體獸醫院之執業獸醫師。</p>
+
+    <h2>三、 個人資料之類別</h2>
+    <p>我們於本網站及等待名單（Waitlist）登記階段所蒐集之個人資料類別包含：</p>
+    <ul>
+      <li><strong>識別個人者（C001）</strong>：電子郵件地址（Email）、自願填寫之稱謂或姓名。</li>
+      <li><strong>寵物照護背景偏好（C036/非敏感資料）</strong>：您所勾選之照護寵物類別（如狗狗家庭、貓咪家庭、多寵物家庭）。</li>
+      <li><strong>系統技術紀錄（C001/C035）</strong>：IP 位址、瀏覽器類型、裝置資訊、點擊與使用時間記錄（Cookie 與分析代碼）。</li>
+    </ul>
+
+    <h2>四、 個人資料利用之期間、地區、對象及方式</h2>
+    <ul>
+      <li><strong>利用期間</strong>：自您填表登記加入等待名單之日起，至本服務停止營運、或您主動提出停止蒐集、處理、利用或請求刪除之日止。</li>
+      <li><strong>利用地區</strong>：中華民國（台灣）境內及本公司伺服器、雲端運算基礎設施所處之合法管轄區域。</li>
+      <li><strong>利用對象</strong>：僅限本公司營運團隊、受本公司委託處理技術服務之合約廠商（如合規之郵件發送服務商、雲端主機商），絕不任意出售、交換、出租或揭露給無關之第三方機構。</li>
+      <li><strong>利用方式</strong>：以自動化機器或其他非自動化方式，透過電子郵件發送封測通知、早鳥優惠序號、產品更新及維護服務。</li>
+    </ul>
+
+    <h2>五、 當事人依個資法第 3 條所得行使之權利</h2>
+    <p>您就本公司保有之台端個人資料，得隨時透過電子郵件向我們行使以下法定權利：</p>
+    <ol>
+      <li>查詢或請求閱覽您的個人資料。</li>
+      <li>請求製給您的個人資料複製本。</li>
+      <li>請求補充或更正您的個人資料。</li>
+      <li>請求停止蒐集、處理或利用您的個人資料。</li>
+      <li>請求刪除您的個人資料（您亦可隨時點擊我們寄發之通知郵件底部的「取消訂閱」連結）。</li>
+    </ol>
+    <p>
+      行使管道：請寄信至個人資料專責小組信箱 <strong>【privacy@petcare-ai.example.com】</strong>，我們將於驗證您的身分後於法定時限內儘速處理。
+    </p>
+
+    <h2>六、 當事人自由選擇提供個人資料對其權益之影響</h2>
+    <p>
+      您可以自由選擇是否提供完整個人資料。惟若您選擇不提供、提供不正確或要求刪除電子郵件地址，我們將無法完成您的早鳥等待名單登記，亦無法於產品封測上線時發送優先邀請與早鳥優惠通知。
+    </p>
+
+    <h2>七、 醫療免責與安全聲明</h2>
+    <p>
+      本服務所提供之藥袋辨識與鬧鐘排程功能，僅為使用者日常照護紀錄與備忘輔助，<strong>絕不構成任何獸醫醫療診斷、處方或治療建議</strong>。毛孩若有任何健康疑慮或異狀，應立即洽詢合格實體獸醫院之執業獸醫師。
+    </p>
+
+    <h2>八、 聯絡我們</h2>
+    <p>
+      若您對本隱私權政策或個人資料保護有任何疑義、建議或申訴，歡迎聯繫：<br>
+      機構名稱：<strong>【PetCare AI 照護科技股份有限公司（籌備處）】</strong><br>
+      聯絡信箱：<strong>【privacy@petcare-ai.example.com】</strong><br>
+      專責部門：<strong>【PetCare AI 個人資料保護與合規小組】</strong>
+    </p>
+
     <div class="footer-note">
       © 2026 【PetCare AI 照護科技股份有限公司（籌備處）】. All rights reserved.
     </div>
   </div>
+  <script>
+    function syncPrivacyDots(themeId) {
+      document.querySelectorAll('[data-theme-pick]').forEach(function (btn) {
+        btn.classList.toggle('active', btn.getAttribute('data-theme-pick') === themeId);
+      });
+    }
+    function setPrivacyTheme(themeId) {
+      document.documentElement.setAttribute('data-theme', themeId);
+      try { localStorage.setItem('petcare_theme', themeId); } catch (e) {}
+      syncPrivacyDots(themeId);
+    }
+    syncPrivacyDots(document.documentElement.getAttribute('data-theme') || 'caramel');
+  </script>
 </body>
 </html>
