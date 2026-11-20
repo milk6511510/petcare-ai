@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-TW">
+<html lang="zh-TW" data-theme="caramel">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
@@ -9,8 +9,18 @@
       content="專為毛孩家庭打造的醫囑排程與家庭共享聯絡簿。一秒拍下藥袋轉錄提醒、全家人雲端連線打卡防重複餵藥。非醫療診斷工具，純日常照護輔助。"
     />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <script>
+      (function () {
+        try {
+          var t = localStorage.getItem('petcare_theme');
+          if (t === 'caramel' || t === 'peach' || t === 'amber' || t === 'sand') {
+            document.documentElement.setAttribute('data-theme', t);
+          }
+        } catch (e) {}
+      })();
+    </script>
   </head>
-  <body class="bg-[#FAF7F2] text-[#2B2623] antialiased">
+  <body class="bg-[var(--bg-canvas)] text-[var(--ink-primary)] antialiased">
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
