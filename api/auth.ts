@@ -9,8 +9,8 @@ import {
   hashToken,
   setSessionCookie,
   verifyPassword
-} from './_lib/auth';
-import { getSql } from './_lib/db';
+} from './_lib/auth.js';
+import { getSql } from './_lib/db.js';
 
 interface GuestPetPayload {
   name?: string;
@@ -110,6 +110,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         `;
       }
 
+      // Migrate primary guest pet if provided, or seed safe-harbor demo pet
       const primaryGuestPet = guestPets[0];
       const petName = primaryGuestPet?.name?.trim() || '波波';
       const petSpecies =
@@ -236,6 +237,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         });
       }
 
+      // Execute account deletion (QA Fix 7.9)
       for (const fam of soleOwnerFamilies) {
         if (fam.total_members > 1 && body.transferOwner === true) {
           const candidates = await sql`

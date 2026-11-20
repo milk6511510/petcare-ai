@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { getAuthContext } from './_lib/auth';
-import { getSql } from './_lib/db';
+import { getAuthContext } from './_lib/auth.js';
+import { getSql } from './_lib/db.js';
 
 const PLAN_CATALOG = [
   {
@@ -109,6 +109,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             WHERE family_id = ${ctx.family.id}
           `;
         } else {
+          // Enforce chk_weekly_no_trial: weekly NEVER has free trial
           const isTrial = plan.planKey === 'pro_annual' ? true : false;
           const status = isTrial ? 'trialing' : 'active';
           const days = plan.planKey === 'pro_annual' ? 365 : plan.planKey === 'pro_monthly' ? 30 : 7;
@@ -162,6 +163,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
         const referrer = refRows[0];
 
+        // Check if user has already completed at least one confirmed prescription scan
         const scanRows = await sql`
           SELECT COUNT(*)::int AS cnt FROM prescriptions WHERE created_by = ${ctx.user.id} AND source = 'ocr_confirmed'
         `;

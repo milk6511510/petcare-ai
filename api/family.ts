@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { getAuthContext } from './_lib/auth';
-import { getSql } from './_lib/db';
+import { getAuthContext } from './_lib/auth.js';
+import { getSql } from './_lib/db.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
@@ -92,6 +92,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
 
         try {
+          // Database trigger trg_enforce_family_member_limit locks families row FOR UPDATE
           await sql`
             INSERT INTO family_members (family_id, user_id, role, display_name_in_family)
             VALUES (${target.id}, ${ctx.user.id}, 'member', ${ctx.user.displayName})

@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { getAuthContext } from './_lib/auth';
-import { billingMonthNow, getSql } from './_lib/db';
+import { getAuthContext } from './_lib/auth.js';
+import { billingMonthNow, getSql } from './_lib/db.js';
 
 interface OcrField<T> {
   value: T | null;
@@ -19,6 +19,7 @@ function buildField<T>(rawValue: T | null, confidence: number, required = false)
     };
   }
   if (confidence < 0.85) {
+    // Compliance & QA Fix 7.8: <85% forced blank value for manual review
     return {
       value: null,
       confidence,
@@ -100,6 +101,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.status(400).json({ error: 'MISSING_PET_ID', message: '請選擇要建立排程的毛孩' });
       }
 
+      // QA Fix 7.2: Atomic Free 3/mo quota check
       const usageRows = await sql`
         SELECT COUNT(*)::int AS cnt
         FROM ocr_usage_logs
@@ -199,6 +201,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         `;
       }
 
+      // MGM Referral Trigger: if user was referred and hasn't unlocked first scan bonus yet, reward BOTH +14 days VIP (capped at +90 days)
       let referralRewarded = false;
       const pendingRef = await sql`
         SELECT id, referrer_user_id, bonus_days

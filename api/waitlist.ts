@@ -1,6 +1,6 @@
 import crypto from 'node:crypto';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { getSql } from './_lib/db';
+import { getSql } from './_lib/db.js';
 
 const PUBLIC_PROVIDERS: Record<string, string> = {
   'gmail.com': 'gmail',

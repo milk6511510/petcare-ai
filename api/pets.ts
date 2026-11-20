@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { getAuthContext } from './_lib/auth';
-import { getSql } from './_lib/db';
+import { getAuthContext } from './_lib/auth.js';
+import { getSql } from './_lib/db.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {

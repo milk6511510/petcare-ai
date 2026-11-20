@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { getAuthContext } from './_lib/auth';
-import { getSql, todayInTimezone } from './_lib/db';
+import { getAuthContext } from './_lib/auth.js';
+import { getSql, todayInTimezone } from './_lib/db.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
@@ -137,6 +137,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
       const petId = schedRows[0].pet_id;
 
+      // Check existing idempotent client_log_id
       const existingClient = await sql`
         SELECT id, logged_by_name_snapshot, logged_at FROM dose_logs WHERE client_log_id = ${clientLogId} LIMIT 1
       `;
@@ -144,6 +145,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.status(200).json({ ok: true, idempotent: true, log: existingClient[0] });
       }
 
+      // Check slot collision -> 409 Conflict + dose_conflicts write (QA Fix 7.5 & 7.6)
       const existingSlot = await sql`
         SELECT id, logged_by_name_snapshot, logged_at
         FROM dose_logs

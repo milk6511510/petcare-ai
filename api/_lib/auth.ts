@@ -1,6 +1,6 @@
 import crypto from 'node:crypto';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { billingMonthNow, getSql } from './db';
+import { billingMonthNow, getSql } from './db.js';
 
 const COOKIE_NAME = 'petcare_session';
 
