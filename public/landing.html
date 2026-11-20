@@ -1,12 +1,23 @@
 <!DOCTYPE html>
-<html lang="zh-TW">
+<html lang="zh-TW" data-theme="caramel">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>PetCare AI 拍立得寵物護理｜拍下藥袋轉錄提醒・全家連線餵藥打卡</title>
   <meta name="description" content="專為毛孩家庭打造的醫囑排程與家庭共享聯絡簿。拍立得一秒辨識紙本藥袋，自動建立服藥行事曆，全家人即時同步已餵藥狀態，不再重複餵或忘記餵。非醫療診斷工具，純照護提醒。">
   <meta name="keywords" content="寵物餵藥提醒, 貓狗用藥紀錄, 寵物藥袋辨識, 毛孩家庭同步, 寵物健康管理, 寵物行事曆">
-  
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <script>
+    (function () {
+      try {
+        var t = localStorage.getItem('petcare_theme');
+        if (t === 'caramel' || t === 'peach' || t === 'amber' || t === 'sand') {
+          document.documentElement.setAttribute('data-theme', t);
+        }
+      } catch (e) {}
+    })();
+  </script>
+
   <!-- Open Graph / Facebook / LINE -->
   <meta property="og:type" content="website">
   <meta property="og:title" content="PetCare AI 拍立得寵物護理｜拍下藥袋轉錄提醒・全家連線餵藥打卡">
@@ -28,45 +39,188 @@
   -->
 
   <style>
-    /* --- CSS Reset & Design Tokens --- */
-    :root {
-      /* Warm Neutral Color Palette */
-      --bg-warm: #FAF8F5;
+    /* --- CSS Reset & Design Tokens (4 Warm Palettes, Caramel Default) --- */
+    :root,
+    [data-theme="caramel"] {
+      --bg-warm: #FBF7F0;
       --bg-surface: #FFFFFF;
-      --bg-surface-subtle: #F3EFE9;
-      --bg-card-alt: #F9F6F0;
-      
-      --ink-primary: #2B2623;
-      --ink-secondary: #5C554F;
-      --ink-muted: #8E857C;
+      --bg-surface-subtle: #F3EADF;
+      --bg-card-alt: #FAF4EB;
+      --header-bg: rgba(251, 247, 240, 0.92);
+
+      --ink-primary: #2E241E;
+      --ink-secondary: #66574C;
+      --ink-muted: #948579;
       --ink-inverse: #FFFFFF;
 
-      /* Brand Accents */
-      --brand-primary: #E06D53;       /* Warm Terracotta / Coral */
-      --brand-primary-hover: #C95A41;
-      --brand-primary-light: #FDF1EE;
-      --brand-secondary: #EAA144;     /* Warm Amber */
-      --brand-secondary-light: #FEF7EE;
+      --brand-primary: #C47449;
+      --brand-primary-hover: #A85E36;
+      --brand-primary-light: #F9EDE5;
+      --brand-primary-soft: rgba(196, 116, 73, 0.14);
+      --brand-primary-border: rgba(196, 116, 73, 0.28);
+      --brand-primary-shadow: rgba(196, 116, 73, 0.28);
 
-      /* Functional Colors */
-      --success-green: #3F8A65;       /* Sage Green for Trust & Health */
-      --success-light: #EBF5F0;
-      --border-subtle: #E8E2D9;
-      --border-focus: #E06D53;
+      --brand-secondary: #D89C4A;
+      --brand-secondary-light: #FEF6E4;
+      --brand-secondary-ink: #9E6312;
+      --brand-secondary-border: rgba(216, 156, 74, 0.35);
+
+      --success-green: #52784D;
+      --success-light: #EEF4EB;
+      --success-border: rgba(82, 120, 77, 0.25);
+
+      --border-subtle: #E8DDD0;
+      --border-focus: #C47449;
       --error-red: #D94848;
+
+      --spotlight-gradient: linear-gradient(145deg, #FFFFFF, #FAF4EB);
+      --cta-gradient: linear-gradient(135deg, #3A2C23, #271D17);
+      --cta-subtitle: #E3D6C8;
+      --cta-link: #F0B995;
+      --phone-bezel: #2E241E;
+      --overlay-bg: rgba(46, 36, 30, 0.58);
 
       /* Elevation & Radii */
       --radius-sm: 8px;
       --radius-md: 16px;
       --radius-lg: 24px;
       --radius-full: 9999px;
-      
-      --shadow-sm: 0 2px 8px rgba(43, 38, 35, 0.04);
-      --shadow-md: 0 8px 24px rgba(43, 38, 35, 0.08);
-      --shadow-lg: 0 16px 40px rgba(43, 38, 35, 0.12);
+
+      --shadow-sm: 0 2px 8px rgba(46, 36, 30, 0.04);
+      --shadow-md: 0 8px 24px rgba(46, 36, 30, 0.08);
+      --shadow-lg: 0 16px 40px rgba(46, 36, 30, 0.12);
 
       --font-stack: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
       --max-width: 1140px;
+    }
+
+    [data-theme="peach"] {
+      --bg-warm: #FFF9F5;
+      --bg-surface: #FFFFFF;
+      --bg-surface-subtle: #F9EFE8;
+      --bg-card-alt: #FFF5EE;
+      --header-bg: rgba(255, 249, 245, 0.92);
+
+      --ink-primary: #332521;
+      --ink-secondary: #6B5650;
+      --ink-muted: #9A857E;
+      --ink-inverse: #FFFFFF;
+
+      --brand-primary: #FF7E5F;
+      --brand-primary-hover: #E86343;
+      --brand-primary-light: #FFF0EC;
+      --brand-primary-soft: rgba(255, 126, 95, 0.15);
+      --brand-primary-border: rgba(255, 126, 95, 0.3);
+      --brand-primary-shadow: rgba(255, 126, 95, 0.28);
+
+      --brand-secondary: #F2A65A;
+      --brand-secondary-light: #FFF6E3;
+      --brand-secondary-ink: #A86416;
+      --brand-secondary-border: rgba(242, 166, 90, 0.35);
+
+      --success-green: #557E53;
+      --success-light: #EEF6EC;
+      --success-border: rgba(85, 126, 83, 0.25);
+
+      --border-subtle: #F0E1D8;
+      --border-focus: #FF7E5F;
+
+      --spotlight-gradient: linear-gradient(145deg, #FFFFFF, #FFF5EE);
+      --cta-gradient: linear-gradient(135deg, #3D2924, #281A16);
+      --cta-subtitle: #E6D4CE;
+      --cta-link: #FFB39E;
+      --phone-bezel: #332521;
+      --overlay-bg: rgba(51, 37, 33, 0.58);
+
+      --shadow-sm: 0 2px 8px rgba(51, 37, 33, 0.04);
+      --shadow-md: 0 8px 24px rgba(51, 37, 33, 0.08);
+      --shadow-lg: 0 16px 40px rgba(51, 37, 33, 0.12);
+    }
+
+    [data-theme="amber"] {
+      --bg-warm: #FFFBF2;
+      --bg-surface: #FFFFFF;
+      --bg-surface-subtle: #F7EFE0;
+      --bg-card-alt: #FFF7E6;
+      --header-bg: rgba(255, 251, 242, 0.92);
+
+      --ink-primary: #2E251A;
+      --ink-secondary: #635542;
+      --ink-muted: #94846F;
+      --ink-inverse: #FFFFFF;
+
+      --brand-primary: #F07828;
+      --brand-primary-hover: #D46218;
+      --brand-primary-light: #FFF1E6;
+      --brand-primary-soft: rgba(240, 120, 40, 0.15);
+      --brand-primary-border: rgba(240, 120, 40, 0.3);
+      --brand-primary-shadow: rgba(240, 120, 40, 0.28);
+
+      --brand-secondary: #D99B26;
+      --brand-secondary-light: #FFF5DC;
+      --brand-secondary-ink: #A8620B;
+      --brand-secondary-border: rgba(217, 155, 38, 0.35);
+
+      --success-green: #5D7F49;
+      --success-light: #F0F6EC;
+      --success-border: rgba(93, 127, 73, 0.25);
+
+      --border-subtle: #ECE0CB;
+      --border-focus: #F07828;
+
+      --spotlight-gradient: linear-gradient(145deg, #FFFFFF, #FFF7E6);
+      --cta-gradient: linear-gradient(135deg, #3B2D1C, #261C10);
+      --cta-subtitle: #E5D9C5;
+      --cta-link: #FFD085;
+      --phone-bezel: #2E251A;
+      --overlay-bg: rgba(46, 37, 26, 0.58);
+
+      --shadow-sm: 0 2px 8px rgba(46, 37, 26, 0.04);
+      --shadow-md: 0 8px 24px rgba(46, 37, 26, 0.08);
+      --shadow-lg: 0 16px 40px rgba(46, 37, 26, 0.12);
+    }
+
+    [data-theme="sand"] {
+      --bg-warm: #FAF7F2;
+      --bg-surface: #FFFFFF;
+      --bg-surface-subtle: #F1EAE0;
+      --bg-card-alt: #F8F3EC;
+      --header-bg: rgba(250, 247, 242, 0.92);
+
+      --ink-primary: #2B2623;
+      --ink-secondary: #5C554F;
+      --ink-muted: #8E857C;
+      --ink-inverse: #FFFFFF;
+
+      --brand-primary: #FF7E47;
+      --brand-primary-hover: #E26430;
+      --brand-primary-light: #FFF1EA;
+      --brand-primary-soft: rgba(255, 126, 71, 0.15);
+      --brand-primary-border: rgba(255, 126, 71, 0.3);
+      --brand-primary-shadow: rgba(255, 126, 71, 0.28);
+
+      --brand-secondary: #D99145;
+      --brand-secondary-light: #FEF6E4;
+      --brand-secondary-ink: #9E6312;
+      --brand-secondary-border: rgba(217, 145, 69, 0.35);
+
+      --success-green: #587C55;
+      --success-light: #EEF5EC;
+      --success-border: rgba(88, 124, 85, 0.25);
+
+      --border-subtle: #E8E2D9;
+      --border-focus: #FF7E47;
+
+      --spotlight-gradient: linear-gradient(145deg, #FFFFFF, #F8F3EC);
+      --cta-gradient: linear-gradient(135deg, #332B26, #211B18);
+      --cta-subtitle: #DDD4CA;
+      --cta-link: #FFB39E;
+      --phone-bezel: #2B2623;
+      --overlay-bg: rgba(43, 38, 35, 0.58);
+
+      --shadow-sm: 0 2px 8px rgba(43, 38, 35, 0.04);
+      --shadow-md: 0 8px 24px rgba(43, 38, 35, 0.08);
+      --shadow-lg: 0 16px 40px rgba(43, 38, 35, 0.12);
     }
 
     *, *::before, *::after {
@@ -87,6 +241,7 @@
       line-height: 1.6;
       -webkit-font-smoothing: antialiased;
       overflow-x: hidden;
+      transition: background-color 0.25s ease, color 0.25s ease;
     }
 
     a {
@@ -119,7 +274,7 @@
       position: sticky;
       top: 0;
       z-index: 100;
-      background: rgba(250, 248, 245, 0.92);
+      background: var(--header-bg);
       backdrop-filter: blur(12px);
       -webkit-backdrop-filter: blur(12px);
       border-bottom: 1px solid var(--border-subtle);
@@ -130,6 +285,7 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
+      gap: 16px;
       height: 72px;
     }
 
@@ -138,9 +294,10 @@
       align-items: center;
       gap: 10px;
       font-weight: 700;
-      font-size: 1.25rem;
+      font-size: 1.2rem;
       color: var(--ink-primary);
       letter-spacing: -0.02em;
+      flex-shrink: 0;
     }
 
     .brand-logo-icon {
@@ -152,25 +309,53 @@
       align-items: center;
       justify-content: center;
       color: #fff;
-      box-shadow: 0 4px 12px rgba(224, 109, 83, 0.3);
+      box-shadow: 0 4px 12px var(--brand-primary-shadow);
     }
 
     .nav-menu {
       display: flex;
       align-items: center;
-      gap: 28px;
+      gap: 24px;
       list-style: none;
     }
 
     .nav-link {
-      font-size: 0.95rem;
+      font-size: 0.94rem;
       font-weight: 600;
       color: var(--ink-secondary);
       transition: color 0.2s ease;
+      white-space: nowrap;
     }
 
     .nav-link:hover {
       color: var(--brand-primary);
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+
+    .nav-app-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 8px 14px;
+      border-radius: var(--radius-full);
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: var(--brand-primary);
+      background: var(--brand-primary-light);
+      border: 1px solid var(--brand-primary-border);
+      transition: all 0.2s ease;
+      white-space: nowrap;
+    }
+
+    .nav-app-link:hover {
+      background: var(--brand-primary-soft);
+      transform: translateY(-1px);
     }
 
     .nav-cta-btn {
@@ -179,20 +364,158 @@
       justify-content: center;
       background-color: var(--brand-primary);
       color: var(--ink-inverse);
-      padding: 10px 20px;
+      padding: 9px 18px;
       border-radius: var(--radius-full);
-      font-size: 0.95rem;
+      font-size: 0.92rem;
       font-weight: 600;
       border: none;
       cursor: pointer;
-      box-shadow: 0 4px 14px rgba(224, 109, 83, 0.25);
+      box-shadow: 0 4px 14px var(--brand-primary-shadow);
       transition: all 0.2s ease;
+      white-space: nowrap;
     }
 
     .nav-cta-btn:hover {
       background-color: var(--brand-primary-hover);
       transform: translateY(-1px);
-      box-shadow: 0 6px 18px rgba(224, 109, 83, 0.35);
+      box-shadow: 0 6px 18px var(--brand-primary-shadow);
+    }
+
+    /* --- Theme Switcher Pill & Popover --- */
+    .theme-switcher {
+      position: relative;
+    }
+
+    .theme-trigger-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 7px 12px;
+      border-radius: var(--radius-full);
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      color: var(--ink-primary);
+      font-size: 0.84rem;
+      font-weight: 600;
+      cursor: pointer;
+      box-shadow: var(--shadow-sm);
+      transition: all 0.2s ease;
+      white-space: nowrap;
+    }
+
+    .theme-trigger-btn:hover {
+      border-color: var(--brand-primary-border);
+      background: var(--bg-card-alt);
+    }
+
+    .theme-dots {
+      display: inline-flex;
+      align-items: center;
+    }
+
+    .theme-dot {
+      width: 11px;
+      height: 11px;
+      border-radius: 50%;
+      border: 1.5px solid #fff;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+    }
+
+    .theme-dot + .theme-dot {
+      margin-left: -4px;
+    }
+
+    .theme-menu {
+      display: none;
+      position: absolute;
+      right: 0;
+      top: calc(100% + 8px);
+      width: 248px;
+      background: rgba(255, 255, 255, 0.98);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      border: 1px solid var(--border-subtle);
+      border-radius: 18px;
+      padding: 8px;
+      box-shadow: var(--shadow-lg);
+      z-index: 200;
+    }
+
+    .theme-menu.open {
+      display: block;
+    }
+
+    .theme-menu-header {
+      padding: 6px 10px 4px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: var(--ink-muted);
+      letter-spacing: 0.04em;
+    }
+
+    .theme-option-btn {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 10px;
+      border-radius: 12px;
+      border: 1px solid transparent;
+      background: transparent;
+      text-align: left;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .theme-option-btn:hover {
+      background: var(--bg-surface-subtle);
+    }
+
+    .theme-option-btn.active {
+      background: var(--brand-primary-light);
+      border-color: var(--brand-primary-border);
+    }
+
+    .theme-option-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .theme-option-name {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: var(--ink-primary);
+    }
+
+    .theme-option-sub {
+      font-size: 0.74rem;
+      color: var(--ink-muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .theme-option-badge {
+      font-size: 0.66rem;
+      font-weight: 700;
+      padding: 1px 6px;
+      border-radius: var(--radius-full);
+      background: var(--brand-primary-soft);
+      color: var(--brand-primary);
+    }
+
+    .theme-check {
+      color: var(--brand-primary);
+      font-weight: 800;
+      font-size: 0.9rem;
+      opacity: 0;
+    }
+
+    .theme-option-btn.active .theme-check {
+      opacity: 1;
     }
 
     /* --- Legal Safe Harbor Notice Banner --- */
@@ -207,6 +530,7 @@
       align-items: center;
       justify-content: center;
       gap: 8px;
+      flex-wrap: wrap;
     }
 
     .safe-harbor-badge {
@@ -243,7 +567,7 @@
       font-size: 0.88rem;
       font-weight: 600;
       margin-bottom: 20px;
-      border: 1px solid rgba(224, 109, 83, 0.2);
+      border: 1px solid var(--brand-primary-border);
     }
 
     .hero-title {
@@ -284,8 +608,8 @@
       align-items: center;
       gap: 6px;
       background: var(--brand-secondary-light);
-      color: #B26A0E;
-      border: 1px solid rgba(234, 161, 68, 0.35);
+      color: var(--brand-secondary-ink);
+      border: 1px solid var(--brand-secondary-border);
       padding: 4px 10px;
       border-radius: 6px;
       font-size: 0.82rem;
@@ -321,7 +645,7 @@
 
     .input-field:focus, .select-field:focus {
       border-color: var(--border-focus);
-      box-shadow: 0 0 0 3px rgba(224, 109, 83, 0.15);
+      box-shadow: 0 0 0 3px var(--brand-primary-soft);
     }
 
     .submit-btn {
@@ -339,13 +663,13 @@
       border-radius: var(--radius-sm);
       cursor: pointer;
       transition: all 0.2s ease;
-      box-shadow: 0 4px 16px rgba(224, 109, 83, 0.3);
+      box-shadow: 0 4px 16px var(--brand-primary-shadow);
     }
 
     .submit-btn:hover:not(:disabled) {
       background: var(--brand-primary-hover);
       transform: translateY(-1px);
-      box-shadow: 0 6px 20px rgba(224, 109, 83, 0.4);
+      box-shadow: 0 6px 20px var(--brand-primary-shadow);
     }
 
     .submit-btn:disabled {
@@ -391,7 +715,7 @@
     .form-message.success {
       display: block;
       background: var(--success-light);
-      border: 1px solid rgba(63, 138, 101, 0.25);
+      border: 1px solid var(--success-border);
       color: var(--success-green);
     }
 
@@ -410,7 +734,7 @@
     .phone-mockup-card {
       background: var(--bg-surface);
       border-radius: 36px;
-      border: 8px solid #2B2623;
+      border: 8px solid var(--phone-bezel);
       box-shadow: var(--shadow-lg);
       padding: 24px 20px;
       position: relative;
@@ -462,7 +786,7 @@
       width: 44px;
       height: 44px;
       border-radius: 10px;
-      background: #FFE5DE;
+      background: var(--brand-primary-light);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -645,7 +969,7 @@
     .pain-card:hover {
       transform: translateY(-4px);
       box-shadow: var(--shadow-md);
-      border-color: rgba(224, 109, 83, 0.4);
+      border-color: var(--brand-primary-border);
     }
 
     .pain-icon-wrapper {
@@ -702,7 +1026,7 @@
       align-items: center;
       justify-content: center;
       margin-bottom: 20px;
-      box-shadow: 0 4px 10px rgba(224, 109, 83, 0.3);
+      box-shadow: 0 4px 10px var(--brand-primary-shadow);
     }
 
     .step-card h3 {
@@ -731,7 +1055,7 @@
 
     /* --- Family Sync Feature Spotlight --- */
     .spotlight-card {
-      background: linear-gradient(145deg, #FFFFFF, #FBF8F4);
+      background: var(--spotlight-gradient);
       border: 1.5px solid var(--border-subtle);
       border-radius: var(--radius-lg);
       padding: 56px 48px;
@@ -798,6 +1122,7 @@
       border-radius: var(--radius-full);
       font-weight: 600;
     }
+
     .pill-done {
       background: var(--success-light);
       color: var(--success-green);
@@ -805,7 +1130,7 @@
 
     .pill-pending {
       background: var(--brand-secondary-light);
-      color: #9E5B09;
+      color: var(--brand-secondary-ink);
     }
 
     /* --- Safe Harbor Compliance Guarantee Box --- */
@@ -838,7 +1163,7 @@
 
     .compliance-col.allow {
       background: var(--success-light);
-      border: 1px solid rgba(63, 138, 101, 0.2);
+      border: 1px solid var(--success-border);
     }
 
     .compliance-col.prohibit {
@@ -908,7 +1233,7 @@
       font-weight: 700;
       padding: 4px 14px;
       border-radius: var(--radius-full);
-      box-shadow: 0 4px 12px rgba(224, 109, 83, 0.35);
+      box-shadow: 0 4px 12px var(--brand-primary-shadow);
       white-space: nowrap;
     }
 
@@ -996,7 +1321,7 @@
       background: var(--brand-primary);
       color: var(--ink-inverse);
       border-color: var(--brand-primary);
-      box-shadow: 0 4px 12px rgba(224, 109, 83, 0.25);
+      box-shadow: 0 4px 12px var(--brand-primary-shadow);
     }
 
     .plan-btn:hover {
@@ -1069,7 +1394,7 @@
 
     /* --- Bottom CTA Section --- */
     .bottom-cta-section {
-      background: linear-gradient(135deg, #2D2724, #1F1B19);
+      background: var(--cta-gradient);
       color: #fff;
       padding: 80px 0;
       border-radius: var(--radius-lg);
@@ -1092,7 +1417,7 @@
 
     .bottom-cta-inner p {
       font-size: 1.05rem;
-      color: #D3CDC6;
+      color: var(--cta-subtitle);
       margin-bottom: 32px;
       line-height: 1.6;
     }
@@ -1103,6 +1428,15 @@
       gap: 12px;
       max-width: 480px;
       margin: 0 auto;
+    }
+
+    .bottom-cta-notice {
+      color: var(--cta-subtitle);
+      border-top-color: rgba(255, 255, 255, 0.16);
+    }
+
+    .bottom-cta-notice a {
+      color: var(--cta-link);
     }
 
     @media (min-width: 560px) {
@@ -1194,7 +1528,7 @@
       left: 0;
       right: 0;
       bottom: 0;
-      background: rgba(43, 38, 35, 0.6);
+      background: var(--overlay-bg);
       backdrop-filter: blur(4px);
       z-index: 1000;
       padding: 20px;
@@ -1319,6 +1653,12 @@
       .floating-pill {
         display: none;
       }
+      .theme-trigger-label {
+        display: none;
+      }
+      .nav-cta-btn {
+        display: none;
+      }
     }
   </style>
 </head>
@@ -1358,9 +1698,82 @@
         </ul>
       </nav>
 
-      <a href="/" class="nav-link" style="color:#4E878C;">進入雲端 App</a><a href="#waitlist" class="nav-cta-btn" onclick="handleCtaClick('nav_join_waitlist')">
-        預約早鳥名單
-      </a>
+      <div class="header-actions">
+        <div class="theme-switcher" id="theme-switcher">
+          <button type="button" class="theme-trigger-btn" id="theme-trigger-btn" onclick="toggleThemeMenu()" aria-haspopup="listbox" aria-expanded="false" title="切換網站暖色系主題">
+            <span class="theme-dots" id="current-theme-dots">
+              <span class="theme-dot" style="background:#C47449;"></span>
+              <span class="theme-dot" style="background:#D89C4A;"></span>
+              <span class="theme-dot" style="background:#FBF7F0;"></span>
+            </span>
+            <span class="theme-trigger-label" id="current-theme-label">日系焦糖奶茶</span>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--ink-muted);">
+              <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
+          </button>
+
+          <div class="theme-menu" id="theme-menu" role="listbox" aria-label="暖色系主題配色">
+            <div class="theme-menu-header">切換網站暖色系主題</div>
+
+            <button type="button" class="theme-option-btn active" data-theme-id="caramel" onclick="setTheme('caramel')">
+              <span class="theme-dots">
+                <span class="theme-dot" style="background:#C47449;"></span>
+                <span class="theme-dot" style="background:#D89C4A;"></span>
+                <span class="theme-dot" style="background:#FBF7F0;"></span>
+              </span>
+              <span class="theme-option-info">
+                <span class="theme-option-name">日系焦糖奶茶 <span class="theme-option-badge">預設</span></span>
+                <span class="theme-option-sub">焦糖棕 × 蜂蜜金 × 燕麥奶白</span>
+              </span>
+              <span class="theme-check">✓</span>
+            </button>
+
+            <button type="button" class="theme-option-btn" data-theme-id="peach" onclick="setTheme('peach')">
+              <span class="theme-dots">
+                <span class="theme-dot" style="background:#FF7E5F;"></span>
+                <span class="theme-dot" style="background:#F2A65A;"></span>
+                <span class="theme-dot" style="background:#FFF9F5;"></span>
+              </span>
+              <span class="theme-option-info">
+                <span class="theme-option-name">奶油蜜桃珊瑚</span>
+                <span class="theme-option-sub">蜜桃珊瑚 × 杏桃金 × 奶油粉白</span>
+              </span>
+              <span class="theme-check">✓</span>
+            </button>
+
+            <button type="button" class="theme-option-btn" data-theme-id="amber" onclick="setTheme('amber')">
+              <span class="theme-dots">
+                <span class="theme-dot" style="background:#F07828;"></span>
+                <span class="theme-dot" style="background:#D99B26;"></span>
+                <span class="theme-dot" style="background:#FFFBF2;"></span>
+              </span>
+              <span class="theme-option-info">
+                <span class="theme-option-name">陽光橘金活力</span>
+                <span class="theme-option-sub">朝陽暖橘 × 太陽金 × 暖杏奶白</span>
+              </span>
+              <span class="theme-check">✓</span>
+            </button>
+
+            <button type="button" class="theme-option-btn" data-theme-id="sand" onclick="setTheme('sand')">
+              <span class="theme-dots">
+                <span class="theme-dot" style="background:#FF7E47;"></span>
+                <span class="theme-dot" style="background:#A67554;"></span>
+                <span class="theme-dot" style="background:#FAF7F2;"></span>
+              </span>
+              <span class="theme-option-info">
+                <span class="theme-option-name">暖砂大地珊瑚</span>
+                <span class="theme-option-sub">珊瑚橘 × 栗子木棕 × 暖砂紙白</span>
+              </span>
+              <span class="theme-check">✓</span>
+            </button>
+          </div>
+        </div>
+
+        <a href="/" class="nav-app-link" onclick="handleCtaClick('nav_enter_app')">進入雲端 App</a>
+        <a href="#waitlist" class="nav-cta-btn" onclick="handleCtaClick('nav_join_waitlist')">
+          預約早鳥名單
+        </a>
+      </div>
     </div>
   </header>
 
@@ -1375,7 +1788,7 @@
           <div class="hero-badge">
             <span>🐾</span> 專為毛孩照護家庭打造的家庭共享聯絡簿
           </div>
-          
+
           <h1 class="hero-title">
             「你餵過藥了嗎？」<br>
             <span class="highlight">再也不怕全家重複餵或忘記餵</span>
@@ -1394,11 +1807,11 @@
             <form id="hero-waitlist-form" onsubmit="handleWaitlistSubmit(event, 'hero_form')">
               <div class="form-group-row">
                 <div class="form-inputs">
-                  <input 
-                    type="email" 
-                    id="hero-email-input" 
-                    class="input-field" 
-                    placeholder="輸入您的 Email（如：petlover@example.com）" 
+                  <input
+                    type="email"
+                    id="hero-email-input"
+                    class="input-field"
+                    placeholder="輸入您的 Email（如：petlover@example.com）"
                     required
                   >
                   <select id="hero-pet-select" class="select-field">
@@ -1420,7 +1833,7 @@
 
               <!-- Quick Personal Data Protection Notice -->
               <div class="privacy-notice-box">
-                📋 <strong>個人資料蒐集快速告知</strong>：本表單蒐集之 Email 僅用於 PetCare AI 上市通知、封測資格與早鳥方案最新資訊發送，您可隨時退訂。詳情請參閱<a href="privacy.html" onclick="openPrivacyModal(event)">隱私權政策</a>。
+                📋 <strong>個人資料蒐集快速告知</strong>：本表單蒐集之 Email 僅用於 PetCare AI 上市通知、封測資格與早鳥方案最新資訊發送，您可隨時退訂。詳情請參閱<a href="/privacy" onclick="openPrivacyModal(event)">隱私權政策</a>。
               </div>
 
               <div class="form-guarantee">
@@ -1676,7 +2089,7 @@
             <div class="timeline-row">
               <div>
                 <div style="font-weight: 600; font-size: 0.9rem;">20:00 晚間消炎藥包（飯後）</div>
-                <div style="font-size: 0.75rem; color: var(--brand-secondary);">等待晚間照護者打卡</div>
+                <div style="font-size: 0.75rem; color: var(--brand-secondary-ink);">等待晚間照護者打卡</div>
               </div>
               <span class="timeline-pill pill-pending">待執行</span>
             </div>
@@ -1912,20 +2325,20 @@
           <p>立即登記 Email，上市前優先收到早鳥方案通知，搶先體驗全家連線打卡。</p>
 
           <form class="bottom-cta-form" onsubmit="handleWaitlistSubmit(event, 'bottom_form')">
-            <input 
-              type="email" 
-              id="bottom-email-input" 
-              class="input-field" 
-              placeholder="輸入您的 Email" 
-              style="background: #fff;" 
+            <input
+              type="email"
+              id="bottom-email-input"
+              class="input-field"
+              placeholder="輸入您的 Email"
+              style="background: #fff;"
               required
             >
             <button type="submit" id="bottom-submit-btn" class="submit-btn" style="background: var(--brand-primary);">
               預約早鳥名單
             </button>
           </form>
-          <div class="privacy-notice-box" style="color: #D3CDC6; border-top-color: rgba(255,255,255,0.15);">
-            📋 <strong>個資告知</strong>：Email 僅用於上市通知與早鳥資格，隨時可退訂。<a href="privacy.html" onclick="openPrivacyModal(event)" style="color: #FFB39E;">隱私權政策</a>
+          <div class="privacy-notice-box bottom-cta-notice">
+            📋 <strong>個資告知</strong>：Email 僅用於上市通知與早鳥資格，隨時可退訂。<a href="/privacy" onclick="openPrivacyModal(event)">隱私權政策</a>
           </div>
           <div id="bottom-form-feedback" class="form-message" role="alert"></div>
         </div>
@@ -1968,7 +2381,7 @@
           <h4>條款與合規</h4>
           <ul class="footer-links">
             <li><a href="#terms-modal" onclick="openTermsModal(event)">服務條款 (Terms of Service)</a></li>
-            <li><a href="privacy.html" onclick="openPrivacyModal(event)">隱私權政策 (Privacy Policy)</a></li>
+            <li><a href="/privacy" onclick="openPrivacyModal(event)">隱私權政策 (Privacy Policy)</a></li>
             <li><a href="#compliance-info" onclick="openHealthNoticeModal(event)">健康紀錄安全守則</a></li>
             <li><a href="mailto:privacy@petcare-ai.example.com">聯絡專責團隊 (Support)</a></li>
           </ul>
@@ -2003,12 +2416,12 @@
       <div class="modal-content">
         <h3>隱私權政策與個人資料保護聲明</h3>
         <p style="font-size: 0.8rem; color: var(--ink-muted);">版本：v1.0 (草案)｜規範：依據中華民國《個人資料保護法》第 8 條規定公告</p>
-        
+
         <h4>一、 蒐集主體</h4>
         <p>本服務個人資料蒐集之主體為：<strong>【PetCare AI 照護科技股份有限公司（籌備處）】</strong>。</p>
 
         <h4>二、 蒐集目的</h4>
-        <p>包含特定目的代號：040 行銷、069 契約/類似契約事務、090 消費者與客戶管理服務、148 網路購物與電子商務、157 調查統計與研究分析。僅用於發送 PetCare AI 上市通知、封測邀請、早鳥方案資訊及客戶服務。</p>
+        <p>包含特定目的代號：040 行銷、069 契約/類似契約事務、090 消費者與客戶管理服務、148 網路購物及其他電子商務服務、157 調查統計與研究分析。僅用於發送 PetCare AI 上市通知、封測邀請、早鳥方案資訊及客戶服務。</p>
 
         <h4>三、 個人資料類別</h4>
         <p>包含：識別個人者（C001：電子郵件地址 Email）、寵物類別偏好（狗/貓/多寵物），以及網路連線記錄（IP 位址、Cookie）。</p>
@@ -2023,7 +2436,7 @@
         <p>台端得自由選擇是否提供資料，若不提供 Email，將無法完成登記並接收早鳥方案通知與優先封測名額。</p>
 
         <h4>七、 完整專屬頁面</h4>
-        <p>您亦可直接造訪獨立完整說明頁：<a href="privacy.html" target="_blank" style="color: var(--brand-primary); text-decoration: underline;">開啟獨立 privacy.html 檔案</a>。</p>
+        <p>您亦可直接造訪獨立完整說明頁：<a href="/privacy" target="_blank" style="color: var(--brand-primary); text-decoration: underline;">開啟獨立隱私權政策頁面</a>。</p>
       </div>
     </div>
   </div>
@@ -2046,9 +2459,72 @@
   </div>
 
   <!-- =========================================================================
-       13. Interactive JavaScript (Form Validation, Mock API, Analytics Events)
+       13. Interactive JavaScript (Theme Switcher, Form Validation, Analytics)
        ========================================================================= -->
   <script>
+    const THEME_META = {
+      caramel: { label: '日系焦糖奶茶', swatches: ['#C47449', '#D89C4A', '#FBF7F0'] },
+      peach: { label: '奶油蜜桃珊瑚', swatches: ['#FF7E5F', '#F2A65A', '#FFF9F5'] },
+      amber: { label: '陽光橘金活力', swatches: ['#F07828', '#D99B26', '#FFFBF2'] },
+      sand: { label: '暖砂大地珊瑚', swatches: ['#FF7E47', '#A67554', '#FAF7F2'] }
+    };
+
+    function syncThemeUI(themeId) {
+      const id = THEME_META[themeId] ? themeId : 'caramel';
+      const meta = THEME_META[id];
+      const labelEl = document.getElementById('current-theme-label');
+      const dotsEl = document.getElementById('current-theme-dots');
+      if (labelEl) labelEl.textContent = meta.label;
+      if (dotsEl) {
+        dotsEl.innerHTML = meta.swatches
+          .map(c => `<span class="theme-dot" style="background:${c};"></span>`)
+          .join('');
+      }
+      document.querySelectorAll('#theme-menu [data-theme-id]').forEach(btn => {
+        btn.classList.toggle('active', btn.getAttribute('data-theme-id') === id);
+      });
+    }
+
+    function setTheme(themeId) {
+      const id = THEME_META[themeId] ? themeId : 'caramel';
+      document.documentElement.setAttribute('data-theme', id);
+      try {
+        localStorage.setItem('petcare_theme', id);
+      } catch (e) {}
+      syncThemeUI(id);
+      closeThemeMenu();
+      trackEvent('theme_change', { theme_id: id, page: 'landing' });
+    }
+
+    function toggleThemeMenu() {
+      const menu = document.getElementById('theme-menu');
+      const btn = document.getElementById('theme-trigger-btn');
+      if (!menu || !btn) return;
+      const isOpen = menu.classList.toggle('open');
+      btn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+    }
+
+    function closeThemeMenu() {
+      const menu = document.getElementById('theme-menu');
+      const btn = document.getElementById('theme-trigger-btn');
+      if (menu) menu.classList.remove('open');
+      if (btn) btn.setAttribute('aria-expanded', 'false');
+    }
+
+    document.addEventListener('click', (event) => {
+      const switcher = document.getElementById('theme-switcher');
+      if (switcher && !switcher.contains(event.target)) {
+        closeThemeMenu();
+      }
+    });
+
+    window.addEventListener('storage', (event) => {
+      if (event.key === 'petcare_theme' && event.newValue && THEME_META[event.newValue]) {
+        document.documentElement.setAttribute('data-theme', event.newValue);
+        syncThemeUI(event.newValue);
+      }
+    });
+
     /**
      * [ANALYTICS EVENT HELPER - 供數據分析 Lens 接 GA4 / GTM / Mixpanel]
      * 封裝統一的事件發送函式，後續 Lens 只需替換底層 window.gtag 即可
@@ -2065,8 +2541,9 @@
       }
     }
 
-    // 觸發頁面載入分析事件
+    // 觸發頁面載入分析事件 & 初始化主題按鈕狀態
     document.addEventListener('DOMContentLoaded', () => {
+      syncThemeUI(document.documentElement.getAttribute('data-theme') || 'caramel');
       trackEvent('page_view', {
         page_title: document.title,
         page_location: window.location.href,
