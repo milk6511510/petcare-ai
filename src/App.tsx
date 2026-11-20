@@ -25,7 +25,9 @@ import { AuthModal } from './components/AuthModal';
 import { PaywallModal } from './components/PaywallModal';
 import { ReportModal } from './components/ReportModal';
 import { SettingsTab } from './components/SettingsTab';
+import { ThemeSwitcher } from './components/ThemeSwitcher';
 import { apiFetch, ApiError } from './lib/api';
+import { applyTheme, getStoredThemeId, THEME_OPTIONS, type ThemeId } from './lib/theme';
 import type {
   AuthContext,
   DoseConflict,
@@ -136,6 +138,7 @@ const FALLBACK_PLANS: PlanItem[] = [
 ];
 
 export default function App() {
+  const [themeId, setThemeId] = useState<ThemeId>(() => getStoredThemeId());
   const [activeTab, setActiveTab] = useState<TabId>('today');
   const [context, setContext] = useState<AuthContext | null>(null);
   const [bootLoading, setBootLoading] = useState(true);
@@ -152,17 +155,20 @@ export default function App() {
     Array<{ id: string; status: string; bonus_days: number; friend_name: string; created_at: string }>
   >([]);
 
+  // Modals & Alerts
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [paywallOpen, setPaywallOpen] = useState(false);
   const [paywallReason, setPaywallReason] = useState<string | null>(null);
   const [reportOpen, setReportOpen] = useState(false);
   const [toast, setToast] = useState<{ kind: 'ok' | 'warn' | 'err'; text: string } | null>(null);
 
+  // Add Pet form
   const [showAddPet, setShowAddPet] = useState(false);
   const [newPetName, setNewPetName] = useState('');
   const [newPetSpecies, setNewPetSpecies] = useState<'dog' | 'cat' | 'other'>('cat');
   const [newPetBreed, setNewPetBreed] = useState('');
 
+  // OCR State
   const [ocrPreset, setOcrPreset] = useState<'heartcalm' | 'gastrowell' | 'soothecoat'>('heartcalm');
   const [ocrFilename, setOcrFilename] = useState<string>('');
   const [ocrPreviewUrl, setOcrPreviewUrl] = useState<string | null>(null);
@@ -178,13 +184,25 @@ export default function App() {
   });
   const [ocrLoading, setOcrLoading] = useState(false);
 
+  // Family join state
   const [joinCodeInput, setJoinCodeInput] = useState('');
   const [copiedFamilyCode, setCopiedFamilyCode] = useState(false);
+
+  useEffect(() => {
+    applyTheme(themeId);
+  }, [themeId]);
 
   const showToast = useCallback((kind: 'ok' | 'warn' | 'err', text: string) => {
     setToast({ kind, text });
     setTimeout(() => setToast(null), 4200);
   }, []);
+
+  function handleChangeTheme(nextId: ThemeId) {
+    setThemeId(nextId);
+    applyTheme(nextId);
+    const label = THEME_OPTIONS.find((t) => t.id === nextId)?.name ?? nextId;
+    showToast('ok', `✓ 已套用「${label}」暖色系主題`);
+  }
 
   const loadCloudWorkspace = useCallback(async (ctx: AuthContext) => {
     setContext(ctx);
@@ -230,7 +248,7 @@ export default function App() {
           await loadCloudWorkspace(authRes.context);
         }
       } catch {
-        // stay in guest mode
+        // stay in guest mode gracefully
       } finally {
         if (mounted) setBootLoading(false);
       }
@@ -498,36 +516,39 @@ export default function App() {
 
   return (
     <div className="ambient-canvas min-h-screen pb-28">
-      <div className="border-b border-white/70 bg-white/55 backdrop-blur-md px-4 py-2 text-center text-[11px] font-medium text-[#5C554F]">
-        <span className="mr-2 inline-block rounded-md bg-[#EBF5F0] px-2 py-0.5 font-bold text-[#3F8A65]">
+      {/* Safe Harbor Non-Medical Banner */}
+      <div className="border-b border-white/70 bg-white/55 backdrop-blur-md px-4 py-2 text-center text-[11px] font-medium text-[var(--ink-secondary)]">
+        <span className="mr-2 inline-block rounded-md bg-[var(--status-ok-bg)] px-2 py-0.5 font-bold text-[var(--status-ok)]">
           非醫療輔助工具
         </span>
         本服務僅供毛孩日常照護紀錄與排程備忘，絕不構成獸醫診斷、處方或劑量推算；有任何健康疑慮請洽合格實體動物醫院。
-        <a href="/landing.html" className="ml-2 font-bold text-[#FF7E47] underline">
+        <a href="/landing.html" className="ml-2 font-bold text-[var(--brand-primary)] underline">
           官網與早鳥名單
         </a>
       </div>
 
+      {/* Main Centered App Shell */}
       <div className="mx-auto max-w-4xl px-4 pt-5">
-        <header className="liquid-glass rounded-[28px] px-4 py-3.5 sm:px-6 mb-5 flex flex-wrap items-center justify-between gap-3">
+        {/* Top Liquid Glass Header */}
+        <header className="liquid-glass relative z-30 rounded-[28px] px-4 py-3.5 sm:px-6 mb-5 flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-[#FF7E47] to-[#4E878C] text-white shadow-md">
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-[var(--brand-primary)] to-[var(--brand-gold)] text-white shadow-md">
               <Camera className="h-5 w-5" />
             </div>
             <div>
               <div className="flex items-center gap-2">
                 <h1 className="text-base sm:text-lg font-black tracking-tight">PetCare AI 拍立得寵物護理</h1>
                 {context?.entitlement.isVip ? (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-[#FF7E47] to-[#D97706] px-2.5 py-0.5 text-[10px] font-extrabold text-white shadow-sm">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-[var(--brand-primary)] to-[var(--brand-gold)] px-2.5 py-0.5 text-[10px] font-extrabold text-white shadow-sm">
                     <Crown className="h-3 w-3" /> VIP
                   </span>
                 ) : (
-                  <span className="rounded-full bg-white/80 px-2 py-0.5 text-[10px] font-bold text-[#5C554F]">
+                  <span className="rounded-full bg-white/80 px-2 py-0.5 text-[10px] font-bold text-[var(--ink-secondary)]">
                     Free 一般版
                   </span>
                 )}
               </div>
-              <p className="text-[11px] text-[#5C554F]">
+              <p className="text-[11px] text-[var(--ink-secondary)]">
                 {context
                   ? `Neon 雲端同步中 ・ ${context.family.name}（${context.family.memberCount}/${context.entitlement.maxFamilyMembers} 人）`
                   : '目前為本機試用模式 ・ 登入即開啟 Neon 雲端帳號連動'}
@@ -536,11 +557,14 @@ export default function App() {
           </div>
 
           <div className="flex items-center gap-2">
+            <ThemeSwitcher themeId={themeId} onChange={handleChangeTheme} variant="pill" />
+
             {!context ? (
               <button
                 type="button"
                 onClick={() => setAuthModalOpen(true)}
-                className="flex items-center gap-1.5 rounded-2xl bg-gradient-to-r from-[#FF7E47] to-[#E66530] px-4 py-2 text-xs font-extrabold text-white shadow-md shadow-[#FF7E47]/25 hover:brightness-105"
+                className="flex items-center gap-1.5 rounded-2xl bg-gradient-to-r from-[var(--brand-primary)] to-[var(--brand-primary-hover)] px-4 py-2 text-xs font-extrabold text-white shadow-md hover:brightness-105"
+                style={{ boxShadow: '0 8px 18px var(--brand-primary-shadow)' }}
               >
                 <Cloud className="h-3.5 w-3.5" />
                 連動雲端帳號
@@ -549,7 +573,7 @@ export default function App() {
               <button
                 type="button"
                 onClick={() => loadCloudWorkspace(context)}
-                className="flex items-center gap-1.5 rounded-2xl bg-white/80 px-3 py-2 text-xs font-bold text-[#4E878C] hover:bg-white border border-white"
+                className="flex items-center gap-1.5 rounded-2xl bg-white/80 px-3 py-2 text-xs font-bold text-[var(--brand-secondary)] hover:bg-white border border-white"
                 title="從 Neon 重新同步"
               >
                 <RefreshCw className="h-3.5 w-3.5" />
@@ -560,18 +584,19 @@ export default function App() {
             <button
               type="button"
               onClick={() => openPaywall()}
-              className="flex items-center gap-1 rounded-2xl bg-white/85 px-3 py-2 text-xs font-extrabold text-[#2B2623] border border-white hover:bg-white"
+              className="flex items-center gap-1 rounded-2xl bg-white/85 px-3 py-2 text-xs font-extrabold text-[var(--ink-primary)] border border-white hover:bg-white"
             >
-              <Sparkles className="h-3.5 w-3.5 text-[#FF7E47]" />
+              <Sparkles className="h-3.5 w-3.5 text-[var(--brand-primary)]" />
               {context?.entitlement.isVip ? 'VIP 方案' : '升級 PRO'}
             </button>
           </div>
         </header>
 
+        {/* Guest Cloud Sync Upsell Strip */}
         {!bootLoading && !context && (
-          <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-[22px] border border-[#4E878C]/25 bg-white/75 px-4 py-3 backdrop-blur-md">
-            <div className="flex items-center gap-2.5 text-xs text-[#2B2623]">
-              <CloudOff className="h-4 w-4 text-[#FF7E47] shrink-0" />
+          <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-[22px] border border-[var(--brand-secondary-border)] bg-white/75 px-4 py-3 backdrop-blur-md">
+            <div className="flex items-center gap-2.5 text-xs text-[var(--ink-primary)]">
+              <CloudOff className="h-4 w-4 text-[var(--brand-primary)] shrink-0" />
               <span>
                 <strong>尚未連動雲端帳號：</strong>目前資料僅暫存於瀏覽器。註冊或登入即可將毛孩資料上雲並領取 <strong>+14 天好友 VIP</strong> 資格！
               </span>
@@ -579,20 +604,21 @@ export default function App() {
             <button
               type="button"
               onClick={() => setAuthModalOpen(true)}
-              className="rounded-xl bg-[#4E878C] px-3.5 py-1.5 text-xs font-bold text-white"
+              className="rounded-xl bg-[var(--brand-secondary)] px-3.5 py-1.5 text-xs font-bold text-white"
             >
               註冊 / 登入同步
             </button>
           </div>
         )}
 
+        {/* Toast Banner */}
         {toast && (
           <div
             className={`mb-4 rounded-2xl px-4 py-3 text-xs font-bold shadow-lg backdrop-blur-md ${
               toast.kind === 'ok'
-                ? 'bg-[#E8F5E9]/95 text-[#2E7D32] border border-[#A5D6A7]'
+                ? 'bg-[var(--status-ok-bg)] text-[var(--status-ok)] border border-[var(--status-ok-border)]'
                 : toast.kind === 'warn'
-                ? 'bg-[#FFF8E1]/95 text-[#8A5A00] border border-[#FFE082]'
+                ? 'bg-[var(--status-warn-bg)] text-[var(--status-warn)] border border-[var(--status-warn-border)]'
                 : 'bg-[#FEECEC]/95 text-[#B71C1C] border border-[#EF9A9A]'
             }`}
           >
@@ -600,8 +626,10 @@ export default function App() {
           </div>
         )}
 
+        {/* TAB 1: TODAY */}
         {activeTab === 'today' && (
           <div className="space-y-4">
+            {/* Unresolved 409 Conflict Alert Banner */}
             {unresolvedConflicts.map((c) => (
               <div
                 key={c.id}
@@ -614,7 +642,7 @@ export default function App() {
                       <div className="font-extrabold text-[#B71C1C]">
                         偵測到重複餵藥回報衝突 ({c.scheduled_time} {c.medication_name})
                       </div>
-                      <p className="mt-1 text-[#5C554F]">
+                      <p className="mt-1 text-[var(--ink-secondary)]">
                         原已由 <strong>{c.winning_logged_by}</strong> 完成打卡；<strong>{c.conflicting_name_snapshot}</strong> 稍後亦回報該時段，系統已自動攔截寫入，請觀察毛孩狀況。
                       </p>
                     </div>
@@ -630,9 +658,10 @@ export default function App() {
               </div>
             ))}
 
+            {/* Multi-pet Selector Pill Bar */}
             <div className="liquid-glass rounded-[24px] p-4">
               <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
-                <span className="text-xs font-extrabold text-[#5C554F]">毛孩健康檔案</span>
+                <span className="text-xs font-extrabold text-[var(--ink-secondary)]">毛孩健康檔案</span>
                 <button
                   type="button"
                   onClick={() => {
@@ -642,7 +671,7 @@ export default function App() {
                       setShowAddPet((v) => !v);
                     }
                   }}
-                  className="flex items-center gap-1 rounded-xl bg-white/85 px-3 py-1.5 text-xs font-bold text-[#FF7E47] border border-white"
+                  className="flex items-center gap-1 rounded-xl bg-white/85 px-3 py-1.5 text-xs font-bold text-[var(--brand-primary)] border border-white"
                 >
                   <Plus className="h-3.5 w-3.5" /> 新增毛孩
                 </button>
@@ -658,8 +687,8 @@ export default function App() {
                       onClick={() => setSelectedPetId(pet.id)}
                       className={`flex items-center gap-2 rounded-2xl px-4 py-2 text-xs font-bold transition ${
                         selected
-                          ? 'bg-[#2B2623] text-white shadow-md'
-                          : 'bg-white/75 text-[#2B2623] hover:bg-white border border-white'
+                          ? 'bg-[var(--ink-primary)] text-white shadow-md'
+                          : 'bg-white/75 text-[var(--ink-primary)] hover:bg-white border border-white'
                       }`}
                     >
                       <span>{pet.avatar_emoji}</span>
@@ -698,7 +727,7 @@ export default function App() {
                   />
                   <button
                     type="submit"
-                    className="rounded-xl bg-[#FF7E47] px-3 py-2 text-xs font-bold text-white"
+                    className="rounded-xl bg-[var(--brand-primary)] px-3 py-2 text-xs font-bold text-white"
                   >
                     確認新增
                   </button>
@@ -706,16 +735,17 @@ export default function App() {
               )}
             </div>
 
+            {/* Today Summary Metric Card */}
             <div className="liquid-glass rounded-[26px] p-5 flex flex-wrap items-center justify-between gap-4">
               <div>
-                <div className="flex items-center gap-2 text-xs font-bold text-[#4E878C]">
+                <div className="flex items-center gap-2 text-xs font-bold text-[var(--brand-secondary)]">
                   <CalendarDays className="h-4 w-4" />
                   <span>今日照護進度 ({new Date().toLocaleDateString('zh-TW')})</span>
                 </div>
                 <div className="mt-1 text-2xl font-black">
                   已完成 {doneCount} / {filteredSchedules.length} 次照護打卡
                 </div>
-                <p className="text-xs text-[#5C554F] mt-0.5">
+                <p className="text-xs text-[var(--ink-secondary)] mt-0.5">
                   點擊「我已餵藥」即寫入資料庫，並自動為其他家人消退該時段重複提醒。
                 </p>
               </div>
@@ -723,23 +753,25 @@ export default function App() {
                 <button
                   type="button"
                   onClick={() => setActiveTab('ocr')}
-                  className="flex items-center gap-1.5 rounded-2xl bg-[#FF7E47] px-4 py-2.5 text-xs font-bold text-white shadow-md shadow-[#FF7E47]/25"
+                  className="flex items-center gap-1.5 rounded-2xl bg-[var(--brand-primary)] px-4 py-2.5 text-xs font-bold text-white shadow-md"
+                  style={{ boxShadow: '0 8px 18px var(--brand-primary-shadow)' }}
                 >
                   <Camera className="h-4 w-4" /> 拍藥袋建排程
                 </button>
                 <button
                   type="button"
                   onClick={() => setReportOpen(true)}
-                  className="flex items-center gap-1.5 rounded-2xl bg-white/85 px-4 py-2.5 text-xs font-bold text-[#2B2623] border border-white"
+                  className="flex items-center gap-1.5 rounded-2xl bg-white/85 px-4 py-2.5 text-xs font-bold text-[var(--ink-primary)] border border-white"
                 >
-                  <FileText className="h-4 w-4 text-[#4E878C]" /> 匯出紀錄
+                  <FileText className="h-4 w-4 text-[var(--brand-secondary)]" /> 匯出紀錄
                 </button>
               </div>
             </div>
 
+            {/* Today Schedule List */}
             <div className="space-y-3">
               {filteredSchedules.length === 0 ? (
-                <div className="liquid-glass rounded-[24px] p-8 text-center text-sm text-[#5C554F]">
+                <div className="liquid-glass rounded-[24px] p-8 text-center text-sm text-[var(--ink-secondary)]">
                   此毛孩目前尚無排程，點擊右上角「拍藥袋建排程」即可快速建立。
                 </div>
               ) : (
@@ -749,13 +781,15 @@ export default function App() {
                     <div
                       key={item.schedule_id}
                       className={`liquid-glass rounded-[24px] p-4 sm:p-5 flex flex-wrap items-center justify-between gap-3 transition ${
-                        done ? 'opacity-90' : 'ring-1 ring-[#FF7E47]/30'
+                        done ? 'opacity-90' : 'ring-1 ring-[var(--brand-primary-border)]'
                       }`}
                     >
                       <div className="flex items-start gap-3.5">
                         <div
                           className={`flex h-12 w-12 shrink-0 flex-col items-center justify-center rounded-2xl font-black text-xs ${
-                            done ? 'bg-[#E8F5E9] text-[#2E7D32]' : 'bg-[#FFF3EC] text-[#FF7E47]'
+                            done
+                              ? 'bg-[var(--status-ok-bg)] text-[var(--status-ok)]'
+                              : 'bg-[var(--brand-primary-light)] text-[var(--brand-primary)]'
                           }`}
                         >
                           <Clock className="h-3.5 w-3.5 mb-0.5" />
@@ -764,20 +798,20 @@ export default function App() {
                         <div>
                           <div className="flex items-center gap-2">
                             <span className="text-sm font-extrabold">{item.medication_name}</span>
-                            <span className="rounded-full bg-white/80 px-2 py-0.5 text-[10px] font-bold text-[#5C554F]">
+                            <span className="rounded-full bg-white/80 px-2 py-0.5 text-[10px] font-bold text-[var(--ink-secondary)]">
                               {item.pet_emoji} {item.pet_name}
                             </span>
                           </div>
-                          <div className="mt-0.5 text-xs text-[#5C554F]">
+                          <div className="mt-0.5 text-xs text-[var(--ink-secondary)]">
                             {item.dosage_text} {item.clinic_name ? `・ ${item.clinic_name}` : ''}
                           </div>
                           {done ? (
-                            <div className="mt-1 inline-flex items-center gap-1 text-[11px] font-bold text-[#2E7D32]">
+                            <div className="mt-1 inline-flex items-center gap-1 text-[11px] font-bold text-[var(--status-ok)]">
                               <CheckCircle2 className="h-3.5 w-3.5" />
                               已由「{item.today_logged_by}」完成打卡（其他家人鬧鐘已消退）
                             </div>
                           ) : (
-                            <div className="mt-1 text-[11px] font-semibold text-[#D97706]">等待照護者打卡中</div>
+                            <div className="mt-1 text-[11px] font-semibold text-[var(--brand-gold)]">等待照護者打卡中</div>
                           )}
                         </div>
                       </div>
@@ -787,7 +821,7 @@ export default function App() {
                           <button
                             type="button"
                             onClick={() => handleCheckIn(item, true)}
-                            className="rounded-2xl border border-[#D97706]/30 bg-[#FFF8E1] px-3.5 py-2 text-[11px] font-bold text-[#9A6B00] hover:bg-[#FFF0C2]"
+                            className="rounded-2xl border border-[var(--status-warn-border)] bg-[var(--status-warn-bg)] px-3.5 py-2 text-[11px] font-bold text-[var(--status-warn)] hover:brightness-95"
                           >
                             測試防重複 (409)
                           </button>
@@ -795,7 +829,7 @@ export default function App() {
                           <button
                             type="button"
                             onClick={() => handleCheckIn(item, false)}
-                            className="rounded-2xl bg-gradient-to-r from-[#4E878C] to-[#3B6D71] px-5 py-2.5 text-xs font-extrabold text-white shadow-md hover:brightness-110"
+                            className="rounded-2xl bg-gradient-to-r from-[var(--brand-secondary)] to-[var(--brand-secondary-hover)] px-5 py-2.5 text-xs font-extrabold text-white shadow-md hover:brightness-110"
                           >
                             ✓ 我已餵藥打卡
                           </button>
@@ -809,25 +843,26 @@ export default function App() {
           </div>
         )}
 
+        {/* TAB 2: OCR SCAN */}
         {activeTab === 'ocr' && (
           <div className="space-y-4">
             <div className="liquid-glass rounded-[28px] p-5 sm:p-6">
               <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
                 <div>
                   <h2 className="text-lg font-extrabold flex items-center gap-2">
-                    <Camera className="h-5 w-5 text-[#FF7E47]" />
+                    <Camera className="h-5 w-5 text-[var(--brand-primary)]" />
                     拍立得藥袋 OCR 轉錄・人機協同核對
                   </h2>
-                  <p className="text-xs text-[#5C554F]">
+                  <p className="text-xs text-[var(--ink-secondary)]">
                     辨識信心 &lt; 85% 自動留空標黃、必填缺失標紅，並強制經飼主目視核對才建立鬧鐘（100% 虛擬示範藥名）。
                   </p>
                 </div>
                 <div className="rounded-2xl bg-white/80 px-3.5 py-2 text-xs font-bold">
                   本月額度：
                   {context?.entitlement.isVip ? (
-                    <span className="text-[#2E7D32] ml-1">VIP 無限次</span>
+                    <span className="text-[var(--status-ok)] ml-1">VIP 無限次</span>
                   ) : (
-                    <span className="text-[#FF7E47] ml-1">
+                    <span className="text-[var(--brand-primary)] ml-1">
                       {context ? `${context.entitlement.ocrUsedThisMonth} / 3 次` : '免費試用（登入追蹤 3 次/月）'}
                     </span>
                   )}
@@ -836,13 +871,13 @@ export default function App() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                 <div className="rounded-2xl bg-white/70 p-4 border border-white space-y-3">
-                  <label className="block text-xs font-bold text-[#5C554F]">1. 上傳實體藥袋照片或選擇虛擬範例</label>
-                  <label className="flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-[#4E878C]/40 bg-white/60 p-4 text-center hover:bg-white transition">
-                    <Upload className="h-6 w-6 text-[#4E878C] mb-1.5" />
-                    <span className="text-xs font-bold text-[#2B2623]">
+                  <label className="block text-xs font-bold text-[var(--ink-secondary)]">1. 上傳實體藥袋照片或選擇虛擬範例</label>
+                  <label className="flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-[var(--brand-secondary-border)] bg-white/60 p-4 text-center hover:bg-white transition">
+                    <Upload className="h-6 w-6 text-[var(--brand-secondary)] mb-1.5" />
+                    <span className="text-xs font-bold text-[var(--ink-primary)]">
                       {ocrFilename ? `已選取：${ocrFilename}` : '點擊拍照 / 選擇藥袋圖片'}
                     </span>
-                    <span className="text-[10px] text-[#8E857C] mt-0.5">支援 JPG / PNG（隱私不落地永久原圖）</span>
+                    <span className="text-[10px] text-[var(--ink-muted)] mt-0.5">支援 JPG / PNG（隱私不落地永久原圖）</span>
                     <input type="file" accept="image/*" onChange={handlePhotoSelected} className="hidden" />
                   </label>
 
@@ -856,7 +891,7 @@ export default function App() {
                 </div>
 
                 <div className="rounded-2xl bg-white/70 p-4 border border-white space-y-3">
-                  <label className="block text-xs font-bold text-[#5C554F]">2. 選擇模擬掃描情境（測試三級信心色碼）</label>
+                  <label className="block text-xs font-bold text-[var(--ink-secondary)]">2. 選擇模擬掃描情境（測試三級信心色碼）</label>
                   <div className="space-y-2">
                     {[
                       {
@@ -881,12 +916,12 @@ export default function App() {
                         onClick={() => setOcrPreset(opt.key)}
                         className={`w-full text-left rounded-xl p-2.5 text-xs border transition ${
                           ocrPreset === opt.key
-                            ? 'border-[#FF7E47] bg-[#FFF5EE]'
+                            ? 'border-[var(--brand-primary)] bg-[var(--brand-primary-light)]'
                             : 'border-white bg-white/80 hover:bg-white'
                         }`}
                       >
                         <div className="font-bold">{opt.title}</div>
-                        <div className="text-[10px] text-[#5C554F]">{opt.desc}</div>
+                        <div className="text-[10px] text-[var(--ink-secondary)]">{opt.desc}</div>
                       </button>
                     ))}
                   </div>
@@ -895,16 +930,18 @@ export default function App() {
                     type="button"
                     disabled={ocrLoading}
                     onClick={handleRunOcr}
-                    className="w-full rounded-2xl bg-gradient-to-r from-[#FF7E47] to-[#E66530] py-3 text-xs font-extrabold text-white shadow-md shadow-[#FF7E47]/25 hover:brightness-105 disabled:opacity-60"
+                    className="w-full rounded-2xl bg-gradient-to-r from-[var(--brand-primary)] to-[var(--brand-primary-hover)] py-3 text-xs font-extrabold text-white shadow-md hover:brightness-105 disabled:opacity-60"
+                    style={{ boxShadow: '0 8px 18px var(--brand-primary-shadow)' }}
                   >
                     {ocrLoading ? '雲端辨識轉錄中...' : '開始拍立得文字轉錄'}
                   </button>
                 </div>
               </div>
 
+              {/* 3-tier Confidence Manual Review Form */}
               {ocrDraft && (
                 <form onSubmit={handleConfirmOcr} className="rounded-[24px] bg-white/90 p-5 border border-white space-y-3">
-                  <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-[#E8E2D9]">
+                  <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-[var(--border-subtle)]">
                     <span className="text-sm font-extrabold">3. 飼主逐項核對與人工確認</span>
                     <div className="flex gap-2 text-[10px] font-bold">
                       <span className="rounded bg-[#E8F5E9] px-2 py-0.5 text-[#2E7D32]">高信心 &ge;85%</span>
@@ -982,12 +1019,12 @@ export default function App() {
                     </div>
                   </div>
 
-                  <label className="flex items-start gap-2.5 rounded-2xl bg-[#FAF7F2] p-3 text-xs font-bold text-[#2B2623]">
+                  <label className="flex items-start gap-2.5 rounded-2xl bg-[var(--bg-canvas)] p-3 text-xs font-bold text-[var(--ink-primary)]">
                     <input
                       type="checkbox"
                       checked={ocrForm.humanConfirmed}
                       onChange={(e) => setOcrForm({ ...ocrForm, humanConfirmed: e.target.checked })}
-                      className="mt-0.5 h-4 w-4 accent-[#FF7E47]"
+                      className="mt-0.5 h-4 w-4 accent-[var(--brand-primary)]"
                     />
                     <span>{ocrDraft.confirmationCheckboxText}</span>
                   </label>
@@ -995,7 +1032,7 @@ export default function App() {
                   <button
                     type="submit"
                     disabled={ocrLoading}
-                    className="w-full rounded-2xl bg-[#4E878C] py-3 text-xs font-extrabold text-white shadow-md hover:brightness-110 disabled:opacity-60"
+                    className="w-full rounded-2xl bg-[var(--brand-secondary)] py-3 text-xs font-extrabold text-white shadow-md hover:brightness-110 disabled:opacity-60"
                   >
                     {context ? '確認無誤・寫入雲端建立排程' : '註冊 / 登入雲端帳號以儲存排程'}
                   </button>
@@ -1005,16 +1042,17 @@ export default function App() {
           </div>
         )}
 
+        {/* TAB 3: FAMILY SYNC */}
         {activeTab === 'family' && (
           <div className="space-y-4">
             <div className="liquid-glass rounded-[28px] p-5 sm:p-6">
               <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
                 <div>
                   <h2 className="text-lg font-extrabold flex items-center gap-2">
-                    <Users className="h-5 w-5 text-[#4E878C]" />
+                    <Users className="h-5 w-5 text-[var(--brand-secondary)]" />
                     家庭連線共享中心（PRO 上限 10 人）
                   </h2>
-                  <p className="text-xs text-[#5C554F]">
+                  <p className="text-xs text-[var(--ink-secondary)]">
                     任何家人完成打卡後即時同步 Neon 雲端，其他成員即刻消退提醒、並透過資料庫鎖擋下重複餵藥。
                   </p>
                 </div>
@@ -1022,7 +1060,7 @@ export default function App() {
                   <button
                     type="button"
                     onClick={() => openPaywall('Trigger A：多人家庭同步為 VIP / PRO 專屬功能，升級後支援最多 10 人即時連線！')}
-                    className="rounded-xl bg-[#FF7E47] px-3.5 py-2 text-xs font-bold text-white"
+                    className="rounded-xl bg-[var(--brand-primary)] px-3.5 py-2 text-xs font-bold text-white"
                   >
                     升級解鎖 10 人同步
                   </button>
@@ -1033,8 +1071,8 @@ export default function App() {
                 <>
                   <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-white/80 p-4 border border-white">
                     <div>
-                      <div className="text-[11px] text-[#8E857C]">我的家庭空間邀請碼（最多 10 位成員）</div>
-                      <div className="text-2xl font-black tracking-widest text-[#FF7E47]">{context.family.inviteCode}</div>
+                      <div className="text-[11px] text-[var(--ink-muted)]">我的家庭空間邀請碼（最多 10 位成員）</div>
+                      <div className="text-2xl font-black tracking-widest text-[var(--brand-primary)]">{context.family.inviteCode}</div>
                     </div>
                     <button
                       type="button"
@@ -1043,7 +1081,7 @@ export default function App() {
                         setCopiedFamilyCode(true);
                         setTimeout(() => setCopiedFamilyCode(false), 1800);
                       }}
-                      className="flex items-center gap-1.5 rounded-xl bg-[#2B2623] px-4 py-2 text-xs font-bold text-white"
+                      className="flex items-center gap-1.5 rounded-xl bg-[var(--ink-primary)] px-4 py-2 text-xs font-bold text-white"
                     >
                       <Copy className="h-3.5 w-3.5" />
                       {copiedFamilyCode ? '已複製家庭代碼' : '複製邀請家人'}
@@ -1051,7 +1089,7 @@ export default function App() {
                   </div>
 
                   <div className="mb-4">
-                    <div className="text-xs font-bold text-[#5C554F] mb-2">
+                    <div className="text-xs font-bold text-[var(--ink-secondary)] mb-2">
                       已連線成員（{members.length} / {context.entitlement.maxFamilyMembers}）
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
@@ -1066,10 +1104,10 @@ export default function App() {
                             </div>
                             <div>
                               <div className="text-xs font-extrabold">{m.display_name}</div>
-                              <div className="text-[10px] text-[#8E857C]">{m.timezone}</div>
+                              <div className="text-[10px] text-[var(--ink-muted)]">{m.timezone}</div>
                             </div>
                           </div>
-                          <span className="rounded-full bg-[#FAF7F2] px-2.5 py-0.5 text-[10px] font-bold text-[#4E878C]">
+                          <span className="rounded-full bg-[var(--bg-canvas)] px-2.5 py-0.5 text-[10px] font-bold text-[var(--brand-secondary)]">
                             {m.role === 'owner' ? '建立者' : '成員'}
                           </span>
                         </div>
@@ -1077,7 +1115,7 @@ export default function App() {
                     </div>
                   </div>
 
-                  <form onSubmit={handleJoinFamily} className="rounded-2xl bg-[#FAF7F2]/90 p-4 border border-white">
+                  <form onSubmit={handleJoinFamily} className="rounded-2xl bg-[var(--bg-canvas)] p-4 border border-white">
                     <label className="block text-xs font-bold mb-2">輸入家人分享的代碼，加入現有家庭空間</label>
                     <div className="flex gap-2">
                       <input
@@ -1090,7 +1128,7 @@ export default function App() {
                       <button
                         type="submit"
                         disabled={!joinCodeInput.trim()}
-                        className="rounded-xl bg-[#4E878C] px-4 py-2 text-xs font-bold text-white disabled:opacity-50"
+                        className="rounded-xl bg-[var(--brand-secondary)] px-4 py-2 text-xs font-bold text-white disabled:opacity-50"
                       >
                         連線加入
                       </button>
@@ -1099,11 +1137,11 @@ export default function App() {
                 </>
               ) : (
                 <div className="rounded-2xl bg-white/75 p-6 text-center space-y-3">
-                  <p className="text-xs text-[#5C554F]">請先登入或註冊雲端帳號，即可建立家庭邀請碼或輸入家人代碼連線同步。</p>
+                  <p className="text-xs text-[var(--ink-secondary)]">請先登入或註冊雲端帳號，即可建立家庭邀請碼或輸入家人代碼連線同步。</p>
                   <button
                     type="button"
                     onClick={() => setAuthModalOpen(true)}
-                    className="rounded-2xl bg-[#FF7E47] px-5 py-2.5 text-xs font-bold text-white"
+                    className="rounded-2xl bg-[var(--brand-primary)] px-5 py-2.5 text-xs font-bold text-white"
                   >
                     立即連動雲端帳號
                   </button>
@@ -1113,16 +1151,17 @@ export default function App() {
           </div>
         )}
 
+        {/* TAB 4: HISTORY & PDF */}
         {activeTab === 'history' && (
           <div className="space-y-4">
             <div className="liquid-glass rounded-[28px] p-5 sm:p-6">
               <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
                 <div>
                   <h2 className="text-lg font-extrabold flex items-center gap-2">
-                    <ClipboardList className="h-5 w-5 text-[#4E878C]" />
+                    <ClipboardList className="h-5 w-5 text-[var(--brand-secondary)]" />
                     歷史照護紀錄與回診摘要
                   </h2>
-                  <p className="text-xs text-[#5C554F]">
+                  <p className="text-xs text-[var(--ink-secondary)]">
                     {context?.entitlement.isVip
                       ? 'VIP 永久完整保存所有打卡紀錄，並支援完整區間 PDF 匯出。'
                       : '一般版保留最近 14 天紀錄與當週單張摘要；升級 PRO 永久保存。'}
@@ -1131,22 +1170,22 @@ export default function App() {
                 <button
                   type="button"
                   onClick={() => setReportOpen(true)}
-                  className="flex items-center gap-1.5 rounded-2xl bg-[#2B2623] px-4 py-2 text-xs font-bold text-white"
+                  className="flex items-center gap-1.5 rounded-2xl bg-[var(--ink-primary)] px-4 py-2 text-xs font-bold text-white"
                 >
                   <FileText className="h-4 w-4" /> 預覽 / 列印 PDF 報表
                 </button>
               </div>
 
               {historyLockedCount > 0 && !context?.entitlement.isVip && (
-                <div className="mb-4 flex items-center justify-between gap-3 rounded-2xl bg-[#FFF8E1] border border-[#FFE082] p-3.5 text-xs">
-                  <span className="font-bold text-[#8A5A00]">
+                <div className="mb-4 flex items-center justify-between gap-3 rounded-2xl bg-[var(--status-warn-bg)] border border-[var(--status-warn-border)] p-3.5 text-xs">
+                  <span className="font-bold text-[var(--status-warn)]">
                     <Lock className="inline h-3.5 w-3.5 mr-1" />
                     另有 {historyLockedCount} 筆超過 14 天的歷史紀錄已封存（VIP 可立即解鎖查閱）
                   </span>
                   <button
                     type="button"
                     onClick={() => openPaywall('超過 14 天的歷史照護紀錄為 VIP 專屬功能，升級後立即完整解鎖！')}
-                    className="rounded-xl bg-[#FF7E47] px-3 py-1.5 text-[11px] font-bold text-white"
+                    className="rounded-xl bg-[var(--brand-primary)] px-3 py-1.5 text-[11px] font-bold text-white"
                   >
                     解鎖全部紀錄
                   </button>
@@ -1155,7 +1194,7 @@ export default function App() {
 
               <div className="space-y-2.5">
                 {historyLogs.length === 0 ? (
-                  <div className="rounded-2xl bg-white/65 p-6 text-center text-xs text-[#5C554F]">
+                  <div className="rounded-2xl bg-white/65 p-6 text-center text-xs text-[var(--ink-secondary)]">
                     {context
                       ? '目前尚無歷史打卡紀錄，回到「今日看板」完成首筆打卡後即可在此查閱！'
                       : '登入雲端帳號後，您的每日餵藥打卡歷程將永久同步至此時間軸。'}
@@ -1167,11 +1206,11 @@ export default function App() {
                         <div className="font-extrabold">
                           {log.pet_emoji} {log.pet_name} ・ {log.medication_name}
                         </div>
-                        <div className="text-[11px] text-[#5C554F]">
+                        <div className="text-[11px] text-[var(--ink-secondary)]">
                           {log.slot_date} {log.scheduled_time} ・ {log.dosage_text}
                         </div>
                       </div>
-                      <span className="rounded-full bg-[#E8F5E9] px-3 py-1 text-[11px] font-bold text-[#2E7D32]">
+                      <span className="rounded-full bg-[var(--status-ok-bg)] px-3 py-1 text-[11px] font-bold text-[var(--status-ok)]">
                         {log.logged_by_name_snapshot} 已打卡
                       </span>
                     </div>
@@ -1182,10 +1221,13 @@ export default function App() {
           </div>
         )}
 
+        {/* TAB 5: SETTINGS & VIP MATRIX */}
         {activeTab === 'settings' && (
           <SettingsTab
             context={context}
             referrals={referrals}
+            themeId={themeId}
+            onChangeTheme={handleChangeTheme}
             onOpenAuth={() => setAuthModalOpen(true)}
             onOpenPaywall={openPaywall}
             onUpdated={(ctx) => loadCloudWorkspace(ctx)}
@@ -1204,6 +1246,7 @@ export default function App() {
         )}
       </div>
 
+      {/* Apple Liquid Glass Floating Pill Dock */}
       <nav className="fixed bottom-4 left-1/2 z-40 -translate-x-1/2 w-[calc(100%-24px)] max-w-xl">
         <div className="liquid-pill-dock grid grid-cols-5 gap-1 rounded-full p-1.5">
           {[
@@ -1222,8 +1265,8 @@ export default function App() {
                 onClick={() => setActiveTab(tab.id)}
                 className={`flex flex-col items-center justify-center rounded-full py-2 text-[10px] sm:text-[11px] font-bold transition ${
                   active
-                    ? 'bg-gradient-to-r from-[#FF7E47] to-[#E66530] text-white shadow-md'
-                    : 'text-[#5C554F] hover:bg-white/60'
+                    ? 'bg-gradient-to-r from-[var(--brand-primary)] to-[var(--brand-primary-hover)] text-white shadow-md'
+                    : 'text-[var(--ink-secondary)] hover:bg-white/60'
                 }`}
               >
                 <Icon className="h-4 w-4 mb-0.5" />
@@ -1234,6 +1277,7 @@ export default function App() {
         </div>
       </nav>
 
+      {/* Modals */}
       <AuthModal
         open={authModalOpen}
         guestPets={pets}
