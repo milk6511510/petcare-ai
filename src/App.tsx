@@ -11,21 +11,25 @@ import {
   Copy,
   Crown,
   FileText,
-  History,
   Lock,
+  Pencil,
   Plus,
   RefreshCw,
-  Settings,
-  ShieldCheck,
+  RotateCcw,
   Sparkles,
   Upload,
   Users
 } from 'lucide-react';
 import { AuthModal } from './components/AuthModal';
+import { LiquidGlassTabbar } from './components/LiquidGlassTabbar';
 import { PaywallModal } from './components/PaywallModal';
-import { ReportModal } from './components/ReportModal';
-import { SettingsTab } from './components/SettingsTab';
 import { PetCompanion3D, getPetMascotSrc } from './components/PetCompanion3D';
+import { ReportModal } from './components/ReportModal';
+import {
+  ScheduleEditorModal,
+  type ScheduleEditorSubmitPayload
+} from './components/ScheduleEditorModal';
+import { SettingsTab } from './components/SettingsTab';
 import { ThemeSwitcher } from './components/ThemeSwitcher';
 import { apiFetch, ApiError } from './lib/api';
 import { applyTheme, getStoredThemeId, THEME_OPTIONS, type ThemeId } from './lib/theme';
@@ -63,8 +67,9 @@ const GUEST_DEFAULT_SCHEDULES: ScheduleItem[] = [
     clinic_name: '晴空動物醫院（虛擬示範）',
     dosage_text: '每次 1 顆・早晚飯後',
     meal_timing: 'after_meal',
+    total_days: 7,
     scheduled_time: '08:30',
-    label: '早飯後照護紀錄',
+    label: '飯後照護',
     today_log_id: 'guest-log-1',
     today_logged_by: '媽媽（示範）',
     today_logged_at: new Date().toISOString()
@@ -79,8 +84,9 @@ const GUEST_DEFAULT_SCHEDULES: ScheduleItem[] = [
     clinic_name: '晴空動物醫院（虛擬示範）',
     dosage_text: '每次 1 顆・早晚飯後',
     meal_timing: 'after_meal',
+    total_days: 7,
     scheduled_time: '20:00',
-    label: '晚飯後照護紀錄',
+    label: '飯後照護',
     today_log_id: null,
     today_logged_by: null,
     today_logged_at: null
@@ -138,6 +144,13 @@ const FALLBACK_PLANS: PlanItem[] = [
   }
 ];
 
+function mealTimingLabel(mealTiming: string): string {
+  if (mealTiming === 'before_meal') return '飯前照護';
+  if (mealTiming === 'before_bed') return '睡前照護';
+  if (mealTiming === 'anytime') return '日常照護';
+  return '飯後照護';
+}
+
 export default function App() {
   const [themeId, setThemeId] = useState<ThemeId>(() => getStoredThemeId());
   const [activeTab, setActiveTab] = useState<TabId>('today');
@@ -162,6 +175,13 @@ export default function App() {
   const [paywallReason, setPaywallReason] = useState<string | null>(null);
   const [reportOpen, setReportOpen] = useState(false);
   const [toast, setToast] = useState<{ kind: 'ok' | 'warn' | 'err'; text: string } | null>(null);
+
+  // Schedule Add/Edit & Reset states
+  const [scheduleModalOpen, setScheduleModalOpen] = useState(false);
+  const [scheduleModalMode, setScheduleModalMode] = useState<'create' | 'edit'>('create');
+  const [editingPrescriptionId, setEditingPrescriptionId] = useState<string | null>(null);
+  const [scheduleSaving, setScheduleSaving] = useState(false);
+  const [confirmResetAll, setConfirmResetAll] = useState(false);
 
   // Add Pet form
   const [showAddPet, setShowAddPet] = useState(false);
@@ -265,26 +285,22 @@ export default function App() {
     setPaywallOpen(true);
   }
 
-  async function handleCheckIn(item: ScheduleItem, simulateOtherMember = false) {
+  async function handleCheckIn(item: ScheduleItem) {
     if (!context) {
-      if (item.today_log_id) {
-        showToast('warn', `⚠️ 本時段已由「${item.today_logged_by}」打卡！雲端版將即時阻斷並同步家人手機。`);
-        return;
-      }
-      const actor = simulateOtherMember ? '爸爸（模擬衝突）' : '我（本機試用）';
+      if (item.today_log_id) return;
       setSchedules((prev) =>
         prev.map((s) =>
           s.schedule_id === item.schedule_id
             ? {
                 ...s,
                 today_log_id: `guest-log-${Date.now()}`,
-                today_logged_by: actor,
+                today_logged_by: '我（本機）',
                 today_logged_at: new Date().toISOString()
               }
             : s
         )
       );
-      showToast('ok', `✓ 已打卡「${item.medication_name}」(${item.scheduled_time})，登入雲端即可與家人即時同步！`);
+      showToast('ok', `✓ 已打卡「${item.medication_name}」(${item.scheduled_time})`);
       return;
     }
 
@@ -293,8 +309,7 @@ export default function App() {
         method: 'POST',
         body: JSON.stringify({
           action: 'log',
-          scheduleId: item.schedule_id,
-          actorOverride: simulateOtherMember ? `${context.user.displayName} (分機重複點擊)` : undefined
+          scheduleId: item.schedule_id
         })
       });
       await loadCloudWorkspace(context);
@@ -306,6 +321,214 @@ export default function App() {
       } else {
         showToast('err', err instanceof ApiError ? err.message : '打卡失敗');
       }
+    }
+  }
+
+  async function handleResetDose(item: ScheduleItem) {
+    if (!context) {
+      setSchedules((prev) =>
+        prev.map((s) =>
+          s.schedule_id === item.schedule_id
+            ? {
+                ...s,
+                today_log_id: null,
+                today_logged_by: null,
+                today_logged_at: null
+              }
+            : s
+        )
+      );
+      showToast('ok', `↺ 已重置「${item.medication_name}」(${item.scheduled_time}) 的今日打卡`);
+      return;
+    }
+
+    try {
+      await apiFetch('/api/doses', {
+        method: 'POST',
+        body: JSON.stringify({
+          action: 'reset_dose',
+          scheduleId: item.schedule_id
+        })
+      });
+      await loadCloudWorkspace(context);
+      showToast('ok', `↺ 已重置「${item.medication_name}」(${item.scheduled_time}) 的今日打卡狀態`);
+    } catch (err) {
+      showToast('err', err instanceof ApiError ? err.message : '重置失敗');
+    }
+  }
+
+  async function handleResetTodayAll() {
+    setConfirmResetAll(false);
+    if (!context) {
+      setSchedules((prev) =>
+        prev.map((s) =>
+          s.pet_id === selectedPet.id || pets.length <= 1
+            ? {
+                ...s,
+                today_log_id: null,
+                today_logged_by: null,
+                today_logged_at: null
+              }
+            : s
+        )
+      );
+      showToast('ok', `↺ 已重置 ${selectedPet.name} 今日全部餵食/用藥打卡次數`);
+      return;
+    }
+
+    try {
+      await apiFetch('/api/doses', {
+        method: 'POST',
+        body: JSON.stringify({
+          action: 'reset_today_all',
+          petId: selectedPet.id
+        })
+      });
+      await loadCloudWorkspace(context);
+      showToast('ok', `↺ 已同步重置 ${selectedPet.name} 今日全部打卡次數`);
+    } catch (err) {
+      showToast('err', err instanceof ApiError ? err.message : '重置失敗');
+    }
+  }
+
+  function openCreateScheduleModal() {
+    setScheduleModalMode('create');
+    setEditingPrescriptionId(null);
+    setScheduleModalOpen(true);
+  }
+
+  function openEditScheduleModal(prescriptionId: string) {
+    setScheduleModalMode('edit');
+    setEditingPrescriptionId(prescriptionId);
+    setScheduleModalOpen(true);
+  }
+
+  async function handleSaveScheduleModal(payload: ScheduleEditorSubmitPayload) {
+    setScheduleSaving(true);
+    try {
+      if (!context) {
+        const label = mealTimingLabel(payload.mealTiming);
+        if (payload.mode === 'create') {
+          const rxId = `guest-rx-${Date.now()}`;
+          const newItems: ScheduleItem[] = payload.slots.map((slot, idx) => ({
+            schedule_id: `guest-sched-${Date.now()}-${idx}`,
+            pet_id: selectedPet.id,
+            pet_name: selectedPet.name,
+            pet_emoji: selectedPet.avatar_emoji,
+            prescription_id: rxId,
+            medication_name: payload.medicationName,
+            clinic_name: null,
+            dosage_text: payload.dosageText,
+            meal_timing: payload.mealTiming,
+            total_days: payload.totalDays,
+            scheduled_time: slot.scheduledTime,
+            label,
+            today_log_id: null,
+            today_logged_by: null,
+            today_logged_at: null
+          }));
+          setSchedules((prev) =>
+            [...prev, ...newItems].sort((a, b) => a.scheduled_time.localeCompare(b.scheduled_time))
+          );
+          showToast('ok', `✓ 已新增「${payload.medicationName}」（每日 ${payload.slots.length} 次）`);
+        } else if (payload.prescriptionId) {
+          setSchedules((prev) => {
+            const others = prev.filter((s) => s.prescription_id !== payload.prescriptionId);
+            const existingById = new Map(
+              prev
+                .filter((s) => s.prescription_id === payload.prescriptionId)
+                .map((s) => [s.schedule_id, s])
+            );
+            const updated: ScheduleItem[] = payload.slots.map((slot, idx) => {
+              const old = slot.scheduleId ? existingById.get(slot.scheduleId) : undefined;
+              return {
+                schedule_id: old ? old.schedule_id : `guest-sched-${Date.now()}-${idx}`,
+                pet_id: selectedPet.id,
+                pet_name: selectedPet.name,
+                pet_emoji: selectedPet.avatar_emoji,
+                prescription_id: payload.prescriptionId!,
+                medication_name: payload.medicationName,
+                clinic_name: old?.clinic_name ?? null,
+                dosage_text: payload.dosageText,
+                meal_timing: payload.mealTiming,
+                total_days: payload.totalDays,
+                scheduled_time: slot.scheduledTime,
+                label,
+                today_log_id: old?.today_log_id ?? null,
+                today_logged_by: old?.today_logged_by ?? null,
+                today_logged_at: old?.today_logged_at ?? null
+              };
+            });
+            return [...others, ...updated].sort((a, b) => a.scheduled_time.localeCompare(b.scheduled_time));
+          });
+          showToast('ok', `✓ 已修改「${payload.medicationName}」為每日 ${payload.slots.length} 次`);
+        }
+        setScheduleModalOpen(false);
+        return;
+      }
+
+      if (payload.mode === 'create') {
+        await apiFetch('/api/doses', {
+          method: 'POST',
+          body: JSON.stringify({
+            action: 'create_schedule',
+            petId: payload.petId,
+            medicationName: payload.medicationName,
+            dosageText: payload.dosageText,
+            mealTiming: payload.mealTiming,
+            totalDays: payload.totalDays,
+            slots: payload.slots
+          })
+        });
+        await loadCloudWorkspace(context);
+        showToast('ok', `✓ 已新增「${payload.medicationName}」（每日 ${payload.slots.length} 次）至 Neon 雲端`);
+      } else {
+        await apiFetch('/api/doses', {
+          method: 'POST',
+          body: JSON.stringify({
+            action: 'update_prescription',
+            prescriptionId: payload.prescriptionId,
+            medicationName: payload.medicationName,
+            dosageText: payload.dosageText,
+            mealTiming: payload.mealTiming,
+            totalDays: payload.totalDays,
+            slots: payload.slots
+          })
+        });
+        await loadCloudWorkspace(context);
+        showToast('ok', `✓ 已更新「${payload.medicationName}」每日次數與時段`);
+      }
+      setScheduleModalOpen(false);
+    } catch (err) {
+      showToast('err', err instanceof ApiError ? err.message : '儲存排程失敗');
+    } finally {
+      setScheduleSaving(false);
+    }
+  }
+
+  async function handleDeletePrescription(prescriptionId: string) {
+    setScheduleSaving(true);
+    try {
+      if (!context) {
+        setSchedules((prev) => prev.filter((s) => s.prescription_id !== prescriptionId));
+        setScheduleModalOpen(false);
+        showToast('ok', '✓ 已移除該餵食 / 用藥項目');
+        return;
+      }
+      await apiFetch('/api/doses', {
+        method: 'POST',
+        body: JSON.stringify({
+          action: 'delete_prescription',
+          prescriptionId
+        })
+      });
+      await loadCloudWorkspace(context);
+      setScheduleModalOpen(false);
+      showToast('ok', '✓ 已停用並移除該餵食 / 用藥排程');
+    } catch (err) {
+      showToast('err', err instanceof ApiError ? err.message : '移除失敗');
+    } finally {
+      setScheduleSaving(false);
     }
   }
 
@@ -510,6 +733,25 @@ export default function App() {
   const pendingCount = Math.max(0, filteredSchedules.length - doneCount);
   const unresolvedConflicts = conflicts.filter((c) => c.resolution_state === 'unresolved');
 
+  const editingPrescriptionData = editingPrescriptionId
+    ? (() => {
+        const matched = filteredSchedules.filter((s) => s.prescription_id === editingPrescriptionId);
+        if (matched.length === 0) return null;
+        return {
+          prescriptionId: editingPrescriptionId,
+          medicationName: matched[0].medication_name,
+          dosageText: matched[0].dosage_text,
+          mealTiming: matched[0].meal_timing || 'after_meal',
+          totalDays: matched[0].total_days || 7,
+          slots: matched.map((m) => ({
+            scheduleId: m.schedule_id,
+            scheduledTime: m.scheduled_time,
+            todayDone: Boolean(m.today_log_id)
+          }))
+        };
+      })()
+    : null;
+
   function highlightClass(level?: 'high' | 'low' | 'missing') {
     if (level === 'missing') return 'border-2 border-[#D32F2F] bg-white focus:ring-[#D32F2F]/30';
     if (level === 'low') return 'border border-[#E6B800] bg-[#FFF8E1] focus:ring-[#E6B800]/30';
@@ -518,7 +760,7 @@ export default function App() {
   }
 
   return (
-    <div className="ambient-canvas min-h-screen pb-28">
+    <div className="ambient-canvas min-h-screen">
       {/* Safe Harbor Non-Medical Banner */}
       <div className="border-b border-white/70 bg-white/55 backdrop-blur-md px-4 py-2 text-center text-[11px] font-medium text-[var(--ink-secondary)]">
         <span className="mr-2 inline-block rounded-md bg-[var(--status-ok-bg)] px-2 py-0.5 font-bold text-[var(--status-ok)]">
@@ -687,7 +929,10 @@ export default function App() {
                     <button
                       key={pet.id}
                       type="button"
-                      onClick={() => setSelectedPetId(pet.id)}
+                      onClick={() => {
+                        setSelectedPetId(pet.id);
+                        setConfirmResetAll(false);
+                      }}
                       className={`flex items-center gap-2 rounded-2xl px-4 py-2 text-xs font-bold transition ${
                         selected
                           ? 'bg-[var(--ink-primary)] text-white shadow-md'
@@ -770,24 +1015,60 @@ export default function App() {
                   />
                 </div>
                 <p className="text-xs text-[var(--ink-secondary)] mt-2">
-                  點擊「我已餵藥」即寫入資料庫，並自動為其他家人消退該時段重複提醒。
+                  可隨時新增或修改每日餵食／用藥次數；點擊「我已餵藥打卡」即同步家人，按「重置」即可取消誤觸紀錄。
                 </p>
                 <div className="mt-4 flex flex-wrap gap-2">
                   <button
                     type="button"
-                    onClick={() => setActiveTab('ocr')}
-                    className="flex items-center gap-1.5 rounded-2xl bg-[var(--brand-primary)] px-4 py-2.5 text-xs font-bold text-white shadow-md"
+                    onClick={openCreateScheduleModal}
+                    className="flex items-center gap-1.5 rounded-2xl bg-[var(--brand-primary)] px-4 py-2.5 text-xs font-bold text-white shadow-md hover:brightness-105"
                     style={{ boxShadow: '0 8px 18px var(--brand-primary-shadow)' }}
                   >
-                    <Camera className="h-4 w-4" /> 拍藥袋建排程
+                    <Plus className="h-4 w-4" /> 新增餵食 / 用藥
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('ocr')}
+                    className="flex items-center gap-1.5 rounded-2xl bg-white/85 px-4 py-2.5 text-xs font-bold text-[var(--ink-primary)] border border-white hover:bg-white"
+                  >
+                    <Camera className="h-4 w-4 text-[var(--brand-primary)]" /> 拍藥袋建排程
                   </button>
                   <button
                     type="button"
                     onClick={() => setReportOpen(true)}
-                    className="flex items-center gap-1.5 rounded-2xl bg-white/85 px-4 py-2.5 text-xs font-bold text-[var(--ink-primary)] border border-white"
+                    className="flex items-center gap-1.5 rounded-2xl bg-white/85 px-4 py-2.5 text-xs font-bold text-[var(--ink-primary)] border border-white hover:bg-white"
                   >
                     <FileText className="h-4 w-4 text-[var(--brand-secondary)]" /> 匯出紀錄
                   </button>
+                  {doneCount > 0 && (
+                    !confirmResetAll ? (
+                      <button
+                        type="button"
+                        onClick={() => setConfirmResetAll(true)}
+                        className="flex items-center gap-1.5 rounded-2xl bg-white/85 px-3.5 py-2.5 text-xs font-bold text-[var(--brand-secondary)] border border-white hover:bg-white"
+                      >
+                        <RotateCcw className="h-3.5 w-3.5" /> 重置今日次數
+                      </button>
+                    ) : (
+                      <div className="flex items-center gap-1.5 rounded-2xl bg-[var(--status-warn-bg)] border border-[var(--status-warn-border)] px-3 py-1.5">
+                        <span className="text-[11px] font-bold text-[var(--status-warn)]">清空今日打卡？</span>
+                        <button
+                          type="button"
+                          onClick={handleResetTodayAll}
+                          className="rounded-xl bg-[var(--brand-primary)] px-2.5 py-1 text-[11px] font-bold text-white"
+                        >
+                          確定重置
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setConfirmResetAll(false)}
+                          className="rounded-xl bg-white px-2.5 py-1 text-[11px] font-bold text-[var(--ink-secondary)]"
+                        >
+                          取消
+                        </button>
+                      </div>
+                    )
+                  )}
                 </div>
               </div>
 
@@ -818,17 +1099,27 @@ export default function App() {
                     {selectedPet.name}目前尚無照護排程
                   </p>
                   <p className="text-xs text-[var(--ink-secondary)]">
-                    點擊上方「拍藥袋建排程」，3 秒就能幫 {selectedPet.name} 建立每日提醒喔！
+                    點擊「新增餵食 / 用藥」自訂每日次數，或使用「拍藥袋建排程」快速建立提醒！
                   </p>
+                  <button
+                    type="button"
+                    onClick={openCreateScheduleModal}
+                    className="mt-2 flex items-center gap-1.5 rounded-2xl bg-[var(--brand-primary)] px-4 py-2 text-xs font-bold text-white shadow"
+                  >
+                    <Plus className="h-3.5 w-3.5" /> 立即新增排程
+                  </button>
                 </div>
               ) : (
                 filteredSchedules.map((item) => {
                   const done = Boolean(item.today_log_id);
+                  const prescriptionSlotCount = filteredSchedules.filter(
+                    (s) => s.prescription_id === item.prescription_id
+                  ).length;
                   return (
                     <div
                       key={item.schedule_id}
                       className={`liquid-glass rounded-[24px] p-4 sm:p-5 flex flex-wrap items-center justify-between gap-3 transition ${
-                        done ? 'opacity-90' : 'ring-1 ring-[var(--brand-primary-border)]'
+                        done ? 'opacity-95' : 'ring-1 ring-[var(--brand-primary-border)]'
                       }`}
                     >
                       <div className="flex items-start gap-3.5">
@@ -843,10 +1134,13 @@ export default function App() {
                           {item.scheduled_time}
                         </div>
                         <div>
-                          <div className="flex items-center gap-2">
+                          <div className="flex flex-wrap items-center gap-2">
                             <span className="text-sm font-extrabold">{item.medication_name}</span>
                             <span className="rounded-full bg-white/80 px-2 py-0.5 text-[10px] font-bold text-[var(--ink-secondary)]">
                               {item.pet_emoji} {item.pet_name}
+                            </span>
+                            <span className="rounded-full bg-[var(--brand-primary-light)] px-2 py-0.5 text-[10px] font-bold text-[var(--brand-primary-hover)]">
+                              每日 {prescriptionSlotCount} 次
                             </span>
                           </div>
                           <div className="mt-0.5 text-xs text-[var(--ink-secondary)]">
@@ -855,7 +1149,7 @@ export default function App() {
                           {done ? (
                             <div className="mt-1 inline-flex items-center gap-1 text-[11px] font-bold text-[var(--status-ok)]">
                               <CheckCircle2 className="h-3.5 w-3.5" />
-                              已由「{item.today_logged_by}」完成打卡（其他家人鬧鐘已消退）
+                              已由「{item.today_logged_by}」完成打卡
                             </div>
                           ) : (
                             <div className="mt-1 text-[11px] font-semibold text-[var(--brand-gold)]">等待照護者打卡中</div>
@@ -863,19 +1157,31 @@ export default function App() {
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => openEditScheduleModal(item.prescription_id)}
+                          className="flex items-center gap-1 rounded-2xl bg-white/85 px-3 py-2 text-xs font-bold text-[var(--ink-secondary)] border border-white hover:bg-white transition"
+                          title="修改每日餵食 / 用藥次數與時間"
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                          <span>修改次數</span>
+                        </button>
+
                         {done ? (
                           <button
                             type="button"
-                            onClick={() => handleCheckIn(item, true)}
-                            className="rounded-2xl border border-[var(--status-warn-border)] bg-[var(--status-warn-bg)] px-3.5 py-2 text-[11px] font-bold text-[var(--status-warn)] hover:brightness-95"
+                            onClick={() => handleResetDose(item)}
+                            className="flex items-center gap-1 rounded-2xl border border-[var(--brand-secondary-border)] bg-white/85 px-3.5 py-2 text-xs font-bold text-[var(--brand-secondary)] hover:bg-white transition"
+                            title="重置這一次的打卡狀態"
                           >
-                            測試防重複 (409)
+                            <RotateCcw className="h-3.5 w-3.5" />
+                            <span>重置</span>
                           </button>
                         ) : (
                           <button
                             type="button"
-                            onClick={() => handleCheckIn(item, false)}
+                            onClick={() => handleCheckIn(item)}
                             className="rounded-2xl bg-gradient-to-r from-[var(--brand-secondary)] to-[var(--brand-secondary-hover)] px-5 py-2.5 text-xs font-extrabold text-white shadow-md hover:brightness-110"
                           >
                             ✓ 我已餵藥打卡
@@ -1313,38 +1619,21 @@ export default function App() {
         )}
       </div>
 
-      {/* Apple Liquid Glass Floating Pill Dock */}
-      <nav className="fixed bottom-4 left-1/2 z-40 -translate-x-1/2 w-[calc(100%-24px)] max-w-xl">
-        <div className="liquid-pill-dock grid grid-cols-5 gap-1 rounded-full p-1.5">
-          {[
-            { id: 'today' as const, label: '今日看板', icon: ShieldCheck },
-            { id: 'ocr' as const, label: '拍立得掃描', icon: Camera },
-            { id: 'family' as const, label: '家庭同步', icon: Users },
-            { id: 'history' as const, label: '照護紀錄', icon: History },
-            { id: 'settings' as const, label: '設定 VIP', icon: Settings }
-          ].map((tab) => {
-            const Icon = tab.icon;
-            const active = activeTab === tab.id;
-            return (
-              <button
-                key={tab.id}
-                type="button"
-                onClick={() => setActiveTab(tab.id)}
-                className={`flex flex-col items-center justify-center rounded-full py-2 text-[10px] sm:text-[11px] font-bold transition ${
-                  active
-                    ? 'bg-gradient-to-r from-[var(--brand-primary)] to-[var(--brand-primary-hover)] text-white shadow-md'
-                    : 'text-[var(--ink-secondary)] hover:bg-white/60'
-                }`}
-              >
-                <Icon className="h-4 w-4 mb-0.5" />
-                <span>{tab.label}</span>
-              </button>
-            );
-          })}
-        </div>
-      </nav>
+      {/* Interactive Liquid Glass Floating Bottom Tabbar */}
+      <LiquidGlassTabbar activeTab={activeTab} onChangeTab={setActiveTab} />
 
       {/* Modals */}
+      <ScheduleEditorModal
+        open={scheduleModalOpen}
+        mode={scheduleModalMode}
+        pet={selectedPet}
+        initialPrescription={editingPrescriptionData}
+        saving={scheduleSaving}
+        onClose={() => setScheduleModalOpen(false)}
+        onSave={handleSaveScheduleModal}
+        onDelete={handleDeletePrescription}
+      />
+
       <AuthModal
         open={authModalOpen}
         guestPets={pets}

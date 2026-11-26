@@ -2,6 +2,20 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { getAuthContext } from './_lib/auth.js';
 import { getSql, todayInTimezone } from './_lib/db.js';
 
+function mealTimingLabel(mealTiming: string): string {
+  if (mealTiming === 'before_meal') return '飯前照護';
+  if (mealTiming === 'before_bed') return '睡前照護';
+  if (mealTiming === 'anytime') return '日常照護';
+  return '飯後照護';
+}
+
+function normalizeTimeValue(raw: unknown): string {
+  const s = String(raw || '').trim();
+  if (/^\d{2}:\d{2}$/.test(s)) return `${s}:00`;
+  if (/^\d{2}:\d{2}:\d{2}$/.test(s)) return s;
+  return '08:30:00';
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     const ctx = await getAuthContext(req);
@@ -24,6 +38,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           pr.clinic_name,
           pr.dosage_text,
           pr.meal_timing,
+          pr.total_days,
           to_char(ds.scheduled_time, 'HH24:MI') AS scheduled_time,
           ds.label,
           dl.id AS today_log_id,
@@ -119,6 +134,175 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.status(200).json({ ok: true });
       }
 
+      if (action === 'reset_dose') {
+        const scheduleId = String(body.scheduleId || '');
+        const slotDate = String(body.slotDate || todayDate);
+        if (!scheduleId) {
+          return res.status(400).json({ error: 'MISSING_SCHEDULE_ID' });
+        }
+        const deleted = await sql`
+          DELETE FROM dose_logs
+          WHERE schedule_id = ${scheduleId}
+            AND slot_date = ${slotDate}::date
+            AND family_id = ${ctx.family.id}
+          RETURNING id
+        `;
+        return res.status(200).json({ ok: true, resetCount: deleted.length });
+      }
+
+      if (action === 'reset_today_all') {
+        const petId = body.petId ? String(body.petId) : '';
+        const deleted = petId
+          ? await sql`
+              DELETE FROM dose_logs
+              WHERE family_id = ${ctx.family.id}
+                AND pet_id = ${petId}
+                AND slot_date = ${todayDate}::date
+              RETURNING id
+            `
+          : await sql`
+              DELETE FROM dose_logs
+              WHERE family_id = ${ctx.family.id}
+                AND slot_date = ${todayDate}::date
+              RETURNING id
+            `;
+        return res.status(200).json({ ok: true, resetCount: deleted.length });
+      }
+
+      if (action === 'create_schedule') {
+        const petId = String(body.petId || '');
+        const medicationName = String(body.medicationName || '').trim();
+        const clinicName = String(body.clinicName || '').trim() || null;
+        const dosageText = String(body.dosageText || '').trim() || '依毛孩日常照護指示';
+        const mealTiming = String(body.mealTiming || 'after_meal').trim();
+        const totalDays = Math.max(1, Math.min(365, Number(body.totalDays || 7)));
+        const slotsRaw: Array<{ scheduledTime?: string }> = Array.isArray(body.slots)
+          ? body.slots
+          : Array.isArray(body.times)
+          ? body.times.map((t: unknown) => ({ scheduledTime: String(t || '08:30') }))
+          : [];
+
+        if (!petId || !medicationName || slotsRaw.length === 0) {
+          return res.status(400).json({ error: 'MISSING_REQUIRED_FIELDS', message: '請填寫項目名稱與至少一個提醒時段' });
+        }
+
+        const petRows = await sql`
+          SELECT id FROM pets WHERE id = ${petId} AND family_id = ${ctx.family.id} AND is_archived = FALSE LIMIT 1
+        `;
+        if (petRows.length === 0) {
+          return res.status(404).json({ error: 'PET_NOT_FOUND', message: '找不到該毛孩檔案' });
+        }
+
+        const rxRows = await sql`
+          INSERT INTO prescriptions (
+            family_id, pet_id, medication_name, clinic_name, dosage_text, meal_timing, total_days, source, human_confirmed, created_by
+          )
+          VALUES (
+            ${ctx.family.id}, ${petId}, ${medicationName}, ${clinicName}, ${dosageText}, ${mealTiming}, ${totalDays}, 'manual_input', TRUE, ${ctx.user.id}
+          )
+          RETURNING id
+        `;
+        const rxId = rxRows[0].id;
+        const label = mealTimingLabel(mealTiming);
+
+        for (const s of slotsRaw.slice(0, 8)) {
+          const normalized = normalizeTimeValue(s.scheduledTime);
+          await sql`
+            INSERT INTO dose_schedules (family_id, pet_id, prescription_id, scheduled_time, label)
+            VALUES (${ctx.family.id}, ${petId}, ${rxId}, ${normalized}::time, ${label})
+          `;
+        }
+
+        return res.status(201).json({ ok: true, prescriptionId: rxId });
+      }
+
+      if (action === 'update_prescription') {
+        const prescriptionId = String(body.prescriptionId || '');
+        const medicationName = String(body.medicationName || '').trim();
+        const dosageText = String(body.dosageText || '').trim() || '依毛孩日常照護指示';
+        const mealTiming = String(body.mealTiming || 'after_meal').trim();
+        const totalDays = Math.max(1, Math.min(365, Number(body.totalDays || 7)));
+        const slotsRaw: Array<{ scheduleId?: string; scheduledTime?: string }> = Array.isArray(body.slots)
+          ? body.slots
+          : [];
+
+        if (!prescriptionId || !medicationName || slotsRaw.length === 0) {
+          return res.status(400).json({ error: 'MISSING_REQUIRED_FIELDS', message: '請填寫項目名稱與至少一個時段' });
+        }
+
+        const rxRows = await sql`
+          SELECT id, pet_id FROM prescriptions WHERE id = ${prescriptionId} AND family_id = ${ctx.family.id} LIMIT 1
+        `;
+        if (rxRows.length === 0) {
+          return res.status(404).json({ error: 'PRESCRIPTION_NOT_FOUND', message: '找不到該排程項目' });
+        }
+        const petId = rxRows[0].pet_id;
+
+        await sql`
+          UPDATE prescriptions
+          SET medication_name = ${medicationName},
+              dosage_text = ${dosageText},
+              meal_timing = ${mealTiming},
+              total_days = ${totalDays}
+          WHERE id = ${prescriptionId} AND family_id = ${ctx.family.id}
+        `;
+
+        const existingRows = await sql`
+          SELECT id FROM dose_schedules
+          WHERE prescription_id = ${prescriptionId} AND family_id = ${ctx.family.id} AND is_active = TRUE
+        `;
+        const existingIds = new Set(existingRows.map((r) => String(r.id)));
+        const keptIds = new Set(
+          slotsRaw
+            .slice(0, 8)
+            .map((s) => (s.scheduleId ? String(s.scheduleId) : ''))
+            .filter((id) => id && existingIds.has(id))
+        );
+
+        for (const oldId of existingIds) {
+          if (!keptIds.has(oldId)) {
+            await sql`
+              UPDATE dose_schedules
+              SET is_active = FALSE
+              WHERE id = ${oldId} AND family_id = ${ctx.family.id}
+            `;
+          }
+        }
+
+        const label = mealTimingLabel(mealTiming);
+        for (const s of slotsRaw.slice(0, 8)) {
+          const normalized = normalizeTimeValue(s.scheduledTime);
+          if (s.scheduleId && existingIds.has(String(s.scheduleId))) {
+            await sql`
+              UPDATE dose_schedules
+              SET scheduled_time = ${normalized}::time,
+                  label = ${label}
+              WHERE id = ${String(s.scheduleId)} AND family_id = ${ctx.family.id}
+            `;
+          } else {
+            await sql`
+              INSERT INTO dose_schedules (family_id, pet_id, prescription_id, scheduled_time, label)
+              VALUES (${ctx.family.id}, ${petId}, ${prescriptionId}, ${normalized}::time, ${label})
+            `;
+          }
+        }
+
+        return res.status(200).json({ ok: true });
+      }
+
+      if (action === 'delete_prescription') {
+        const prescriptionId = String(body.prescriptionId || '');
+        if (!prescriptionId) {
+          return res.status(400).json({ error: 'MISSING_PRESCRIPTION_ID' });
+        }
+        await sql`
+          UPDATE dose_schedules
+          SET is_active = FALSE
+          WHERE prescription_id = ${prescriptionId} AND family_id = ${ctx.family.id}
+        `;
+        return res.status(200).json({ ok: true });
+      }
+
       const scheduleId = String(body.scheduleId || '');
       const slotDate = String(body.slotDate || todayDate);
       const clientLogId = String(body.clientLogId || `web-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`);
@@ -145,7 +329,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.status(200).json({ ok: true, idempotent: true, log: existingClient[0] });
       }
 
-      // Check slot collision -> 409 Conflict + dose_conflicts write (QA Fix 7.5 & 7.6)
+      // Check slot collision -> 409 Conflict + dose_conflicts write
       const existingSlot = await sql`
         SELECT id, logged_by_name_snapshot, logged_at
         FROM dose_logs

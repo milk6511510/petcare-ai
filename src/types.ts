@@ -68,6 +68,7 @@ export interface ScheduleItem {
   clinic_name: string | null;
   dosage_text: string;
   meal_timing: string;
+  total_days?: number;
   scheduled_time: string;
   label: string | null;
   today_log_id: string | null;
