@@ -1,5 +1,6 @@
 import React from 'react';
 import { Crown, FileText, Printer, X } from 'lucide-react';
+import { getEffectiveEntitlement } from '../lib/entitlements';
 import type { AuthContext, HistoryLog, Pet } from '../types';
 
 interface ReportModalProps {
@@ -21,7 +22,7 @@ export const ReportModal: React.FC<ReportModalProps> = ({
 }) => {
   if (!open) return null;
 
-  const isVip = Boolean(context?.entitlement.isVip);
+  const isVip = getEffectiveEntitlement(context).isVip;
   const visibleLogs = isVip ? logs : logs.slice(0, 7);
 
   return (
@@ -48,7 +49,7 @@ export const ReportModal: React.FC<ReportModalProps> = ({
               </p>
             </div>
             <span className="rounded-full bg-[var(--bg-canvas)] border border-[var(--border-subtle)] px-3 py-1 text-[11px] font-bold">
-              {isVip ? 'VIP 完整區間報表' : '一般版當週單張摘要'}
+              {isVip ? 'PRO 完整區間報表' : '一般版當週單張摘要'}
             </span>
           </div>
 
@@ -124,7 +125,7 @@ export const ReportModal: React.FC<ReportModalProps> = ({
               解鎖無限次完整歷史區間 PDF 報表 (VIP)
             </button>
           ) : (
-            <span className="text-xs font-semibold text-[var(--brand-secondary)]">✓ 您已享有 VIP 完整區間報表匯出權限</span>
+            <span className="text-xs font-semibold text-[var(--brand-secondary)]">✓ 已享有 PRO 完整區間報表匯出權限</span>
           )}
 
           <button

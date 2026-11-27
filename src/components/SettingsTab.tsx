@@ -13,8 +13,10 @@ import {
   UserCheck
 } from 'lucide-react';
 import { apiFetch, ApiError, setStoredToken } from '../lib/api';
+import { getEffectiveEntitlement } from '../lib/entitlements';
 import type { ThemeId } from '../lib/theme';
 import type { AuthContext } from '../types';
+import { RoundedSelect, type RoundedSelectOption } from './RoundedSelect';
 import { ThemeSwitcher } from './ThemeSwitcher';
 
 interface SettingsTabProps {
@@ -27,6 +29,13 @@ interface SettingsTabProps {
   onUpdated: (ctx: AuthContext) => void;
   onLoggedOut: () => void;
 }
+
+const TIMEZONE_OPTIONS: RoundedSelectOption[] = [
+  { value: 'Asia/Taipei', label: 'Asia/Taipei (UTC+8 台北)' },
+  { value: 'Asia/Tokyo', label: 'Asia/Tokyo (UTC+9 東京)' },
+  { value: 'Asia/Hong_Kong', label: 'Asia/Hong_Kong (UTC+8 香港)' },
+  { value: 'America/Los_Angeles', label: 'America/Los_Angeles (美西)' }
+];
 
 const MATRIX_ROWS = [
   {
@@ -85,7 +94,8 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
   const [deleteStep, setDeleteStep] = useState<'idle' | 'confirm'>('idle');
   const [deleteWarning, setDeleteWarning] = useState<string | null>(null);
 
-  const isVip = Boolean(context?.entitlement.isVip);
+  const eff = getEffectiveEntitlement(context);
+  const isVip = eff.isVip;
 
   async function handleSaveProfile(e: React.FormEvent) {
     e.preventDefault();
@@ -203,7 +213,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="text-base font-extrabold">
-                  {context ? context.user.displayName : '本機訪客模式（未綁定雲端帳號）'}
+                  {context ? context.user.displayName : '本機試用模式（未綁定雲端帳號）'}
                 </h3>
                 {context ? (
                   <span className="inline-flex items-center gap-1 rounded-full bg-[var(--status-ok-bg)] px-2.5 py-0.5 text-[11px] font-bold text-[var(--status-ok)]">
@@ -225,7 +235,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
             <button
               type="button"
               onClick={handleLogout}
-              className="flex items-center gap-1.5 rounded-xl bg-white/80 px-3.5 py-2 text-xs font-bold text-[var(--ink-secondary)] hover:bg-white border border-white"
+              className="flex items-center gap-1.5 rounded-2xl bg-white/80 px-3.5 py-2 text-xs font-bold text-[var(--ink-secondary)] hover:bg-white border border-white"
             >
               <LogOut className="h-3.5 w-3.5" /> 登出切換帳號
             </button>
@@ -233,7 +243,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
             <button
               type="button"
               onClick={onOpenAuth}
-              className="flex items-center gap-1.5 rounded-xl bg-[var(--brand-primary)] px-4 py-2 text-xs font-bold text-white shadow-md"
+              className="flex items-center gap-1.5 rounded-2xl bg-[var(--brand-primary)] px-4 py-2 text-xs font-bold text-white shadow-md"
               style={{ boxShadow: '0 8px 18px var(--brand-primary-shadow)' }}
             >
               <UserCheck className="h-3.5 w-3.5" /> 立即連動雲端帳號
@@ -248,21 +258,17 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
               placeholder="顯示名稱"
-              className="rounded-xl border border-white/80 bg-white/80 px-3 py-2 text-xs outline-none focus:border-[var(--brand-primary)]"
+              className="rounded-2xl border border-white/80 bg-white/85 px-3.5 py-2.5 text-xs outline-none focus:border-[var(--brand-primary)]"
             />
-            <select
+            <RoundedSelect
               value={timezone}
-              onChange={(e) => setTimezone(e.target.value)}
-              className="rounded-xl border border-white/80 bg-white/80 px-3 py-2 text-xs outline-none focus:border-[var(--brand-primary)]"
-            >
-              <option value="Asia/Taipei">Asia/Taipei (UTC+8)</option>
-              <option value="Asia/Tokyo">Asia/Tokyo (UTC+9)</option>
-              <option value="Asia/Hong_Kong">Asia/Hong_Kong (UTC+8)</option>
-              <option value="America/Los_Angeles">America/Los_Angeles</option>
-            </select>
+              options={TIMEZONE_OPTIONS}
+              onChange={setTimezone}
+              ariaLabel="選擇時區"
+            />
             <button
               type="submit"
-              className="rounded-xl bg-[var(--brand-secondary)] px-4 py-2 text-xs font-bold text-white hover:brightness-110"
+              className="rounded-2xl bg-[var(--brand-secondary)] px-4 py-2.5 text-xs font-bold text-white hover:brightness-110"
             >
               儲存雲端個人設定
             </button>
@@ -281,12 +287,10 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
             <p className="text-xs text-[var(--ink-secondary)]">
               目前等級：
               <strong className={isVip ? 'text-[var(--brand-primary)]' : 'text-[var(--brand-secondary)]'}>
-                {isVip
-                  ? ` VIP / PRO 啟用中（${
-                      context?.entitlement.vipSource === 'referral_bonus'
-                        ? `好友邀請體驗剩餘 ${context.entitlement.vipDaysRemaining} 天`
-                        : `${context?.entitlement.plan}・剩餘 ${context?.entitlement.vipDaysRemaining} 天`
-                    }）`
+                {eff.isTempProUnlock
+                  ? ` PRO 完整權限（限時全站開放體驗中）`
+                  : isVip
+                  ? ` VIP / PRO 啟用中`
                   : ' 一般版 (Free NT$0)'}
               </strong>
             </p>
@@ -295,9 +299,9 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
           <button
             type="button"
             onClick={() => onOpenPaywall()}
-            className="rounded-xl bg-gradient-to-r from-[var(--brand-primary)] to-[var(--brand-gold)] px-4 py-2 text-xs font-bold text-white shadow"
+            className="rounded-2xl bg-gradient-to-r from-[var(--brand-primary)] to-[var(--brand-gold)] px-4 py-2 text-xs font-bold text-white shadow"
           >
-            {isVip ? '管理 / 變更訂閱方案' : '升級 PRO 方案（週/月首購 NT$60）'}
+            {isVip ? '查看 / 管理 PRO 方案' : '升級 PRO 方案（週/月首購 NT$60）'}
           </button>
         </div>
 
@@ -322,7 +326,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
                     <td className="px-3.5 py-2.5 text-right">
                       {unlocked ? (
                         <span className="inline-flex items-center gap-1 rounded-full bg-[var(--status-ok-bg)] px-2.5 py-0.5 text-[10px] font-bold text-[var(--status-ok)]">
-                          <CheckCircle2 className="h-3 w-3" /> VIP 已解鎖
+                          <CheckCircle2 className="h-3 w-3" /> PRO 已解鎖
                         </span>
                       ) : (
                         <span className="inline-flex items-center gap-1 rounded-full bg-[var(--bg-canvas)] px-2.5 py-0.5 text-[10px] font-bold text-[var(--ink-muted)]">
@@ -358,7 +362,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
               <button
                 type="button"
                 onClick={handleCopyReferral}
-                className="flex items-center gap-1.5 rounded-xl bg-[var(--brand-secondary)] px-3.5 py-2 text-xs font-bold text-white"
+                className="flex items-center gap-1.5 rounded-2xl bg-[var(--brand-secondary)] px-3.5 py-2 text-xs font-bold text-white"
               >
                 <Copy className="h-3.5 w-3.5" />
                 {copiedCode ? '已複製邀請碼！' : '複製邀請碼分享'}
@@ -371,12 +375,12 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
                 value={referralInput}
                 onChange={(e) => setReferralInput(e.target.value.toUpperCase())}
                 placeholder="輸入朋友給您的邀請碼（例如 VIP-XXXXXX）"
-                className="flex-1 rounded-xl border border-white/80 bg-white/80 px-3 py-2 text-xs uppercase outline-none focus:border-[var(--brand-secondary)]"
+                className="flex-1 rounded-2xl border border-white/80 bg-white/85 px-3.5 py-2 text-xs uppercase outline-none focus:border-[var(--brand-secondary)]"
               />
               <button
                 type="submit"
                 disabled={!referralInput.trim()}
-                className="rounded-xl bg-[var(--ink-primary)] px-4 py-2 text-xs font-bold text-white disabled:opacity-50"
+                className="rounded-2xl bg-[var(--ink-primary)] px-4 py-2 text-xs font-bold text-white disabled:opacity-50"
               >
                 輸入領取 +14 天
               </button>
@@ -402,7 +406,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
           <button
             type="button"
             onClick={onOpenAuth}
-            className="rounded-xl bg-[var(--brand-secondary)] px-4 py-2 text-xs font-bold text-white"
+            className="rounded-2xl bg-[var(--brand-secondary)] px-4 py-2 text-xs font-bold text-white"
           >
             登入或註冊取得專屬好友邀請碼
           </button>

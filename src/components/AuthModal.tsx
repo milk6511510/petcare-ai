@@ -54,7 +54,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 species: p.species,
                 breed: p.breed,
                 weightKg: p.weight_kg,
-                avatarEmoji: p.avatar_emoji
+                avatarEmoji: p.avatar_emoji,
+                appearance: p.appearance || undefined
               }))
             }
           : {

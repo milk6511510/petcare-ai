@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Check, Crown, Gift, ShieldCheck, Sparkles, X } from 'lucide-react';
 import { apiFetch, ApiError } from '../lib/api';
+import { getEffectiveEntitlement } from '../lib/entitlements';
 import type { AuthContext, PlanItem } from '../types';
 
 interface PaywallModalProps {
@@ -30,6 +31,7 @@ export const PaywallModal: React.FC<PaywallModalProps> = ({
 
   if (!open) return null;
 
+  const eff = getEffectiveEntitlement(context);
   const selectedPlan = plans.find((p) => p.id === selectedPlanId) ?? plans[3] ?? plans[0];
 
   async function handleSubscribe() {
@@ -114,6 +116,12 @@ export const PaywallModal: React.FC<PaywallModalProps> = ({
             <h2 className="text-xl font-extrabold tracking-tight">全家人即時同步・守護毛孩每次照護</h2>
           </div>
         </div>
+
+        {eff.isTempProUnlock && (
+          <div className="mb-3 rounded-2xl border border-[var(--status-ok-border)] bg-[var(--status-ok-bg)] px-4 py-2.5 text-xs font-bold text-[var(--status-ok)]">
+            ✓ 目前已為您限時開放完整 PRO 權限（無限毛孩與 3D 公仔、無限 OCR 掃描、10 人同步與完整 PDF 報表），歡迎盡情體驗！
+          </div>
+        )}
 
         {triggerReason && (
           <div className="mb-4 rounded-2xl border border-[var(--brand-primary-border)] bg-[var(--brand-primary-light)] px-4 py-2.5 text-xs font-semibold text-[var(--brand-primary-hover)]">
