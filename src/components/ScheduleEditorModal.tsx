@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Clock, Plus, Sparkles, Trash2, X } from 'lucide-react';
 import type { Pet } from '../types';
+import { RoundedSelect, type RoundedSelectOption } from './RoundedSelect';
 
 export interface ScheduleSlotInput {
   scheduleId?: string;
@@ -43,6 +44,13 @@ const DEFAULT_TIME_PRESETS: Record<number, string[]> = {
   3: ['08:00', '13:00', '20:00'],
   4: ['08:00', '12:30', '17:30', '22:00']
 };
+
+const MEAL_TIMING_OPTIONS: RoundedSelectOption[] = [
+  { value: 'after_meal', label: '飯後' },
+  { value: 'before_meal', label: '飯前' },
+  { value: 'before_bed', label: '睡前' },
+  { value: 'anytime', label: '不限時段' }
+];
 
 export const ScheduleEditorModal: React.FC<ScheduleEditorModalProps> = ({
   open,
@@ -189,25 +197,22 @@ export const ScheduleEditorModal: React.FC<ScheduleEditorModalProps> = ({
                 value={dosageText}
                 onChange={(e) => setDosageText(e.target.value)}
                 placeholder="例如：每次 1 顆 / 飼料 40g"
-                className="w-full rounded-2xl border border-white/80 bg-white/85 px-3.5 py-2 text-xs outline-none focus:border-[var(--brand-primary)]"
+                className="w-full rounded-2xl border border-white/80 bg-white/85 px-3.5 py-2.5 text-xs outline-none focus:border-[var(--brand-primary)]"
               />
             </div>
 
             <div className="grid grid-cols-2 gap-2">
               <div>
                 <label className="mb-1 block text-xs font-bold text-[var(--ink-secondary)]">照護時機</label>
-                <select
+                <RoundedSelect
                   value={mealTiming}
-                  onChange={(e) =>
-                    setMealTiming(e.target.value as 'after_meal' | 'before_meal' | 'before_bed' | 'anytime')
+                  options={MEAL_TIMING_OPTIONS}
+                  onChange={(v) =>
+                    setMealTiming(v as 'after_meal' | 'before_meal' | 'before_bed' | 'anytime')
                   }
-                  className="w-full rounded-2xl border border-white/80 bg-white/85 px-2.5 py-2 text-xs outline-none focus:border-[var(--brand-primary)]"
-                >
-                  <option value="after_meal">飯後</option>
-                  <option value="before_meal">飯前</option>
-                  <option value="before_bed">睡前</option>
-                  <option value="anytime">不限時段</option>
-                </select>
+                  triggerClassName="px-2.5 py-2.5"
+                  ariaLabel="選擇照護時機"
+                />
               </div>
               <div>
                 <label className="mb-1 block text-xs font-bold text-[var(--ink-secondary)]">預計天數</label>
@@ -217,7 +222,7 @@ export const ScheduleEditorModal: React.FC<ScheduleEditorModalProps> = ({
                   max={365}
                   value={totalDays}
                   onChange={(e) => setTotalDays(e.target.value)}
-                  className="w-full rounded-2xl border border-white/80 bg-white/85 px-2.5 py-2 text-xs outline-none focus:border-[var(--brand-primary)]"
+                  className="w-full rounded-2xl border border-white/80 bg-white/85 px-2.5 py-2.5 text-xs outline-none focus:border-[var(--brand-primary)]"
                 />
               </div>
             </div>
