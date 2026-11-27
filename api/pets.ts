@@ -2,6 +2,20 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { getAuthContext } from './_lib/auth.js';
 import { getSql } from './_lib/db.js';
 
+let ensuredAppearanceColumn = false;
+
+async function ensureAppearanceColumn(sql: ReturnType<typeof getSql>): Promise<boolean> {
+  if (ensuredAppearanceColumn) return true;
+  try {
+    await sql`ALTER TABLE pets ADD COLUMN IF NOT EXISTS appearance JSONB`;
+    ensuredAppearanceColumn = true;
+    return true;
+  } catch (err) {
+    console.warn('Could not ensure pets.appearance column:', err);
+    return false;
+  }
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     const ctx = await getAuthContext(req);
@@ -10,14 +24,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     const sql = getSql();
+    const hasAppearance = await ensureAppearanceColumn(sql);
 
     if (req.method === 'GET') {
-      const pets = await sql`
-        SELECT id, name, species, breed, weight_kg, avatar_emoji, is_archived, created_at
-        FROM pets
-        WHERE family_id = ${ctx.family.id} AND is_archived = FALSE
-        ORDER BY created_at ASC
-      `;
+      const pets = hasAppearance
+        ? await sql`
+            SELECT id, name, species, breed, weight_kg, avatar_emoji, appearance, is_archived, created_at
+            FROM pets
+            WHERE family_id = ${ctx.family.id} AND is_archived = FALSE
+            ORDER BY created_at ASC
+          `
+        : await sql`
+            SELECT id, name, species, breed, weight_kg, avatar_emoji, is_archived, created_at
+            FROM pets
+            WHERE family_id = ${ctx.family.id} AND is_archived = FALSE
+            ORDER BY created_at ASC
+          `;
 
       const prescriptions = await sql`
         SELECT id, pet_id, medication_name, clinic_name, dosage_text, meal_timing, total_days, source, user_confirmed_at
@@ -46,8 +68,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const name = String(body.name || '').trim();
       const species = body.species === 'cat' || body.species === 'other' ? body.species : 'dog';
       const breed = String(body.breed || '').trim() || null;
-      const weightKg = body.weightKg !== undefined && body.weightKg !== '' ? Number(body.weightKg) : null;
+      const weightKg = body.weightKg !== undefined && body.weightKg !== '' && body.weightKg !== null ? Number(body.weightKg) : null;
       const avatarEmoji = String(body.avatarEmoji || (species === 'cat' ? '🐱' : species === 'other' ? '🐾' : '🐶'));
+      const appearance = body.appearance && typeof body.appearance === 'object' ? JSON.stringify(body.appearance) : null;
 
       if (!name) {
         return res.status(400).json({ error: 'INVALID_PET_NAME', message: '請輸入毛孩名稱' });
@@ -64,11 +87,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         });
       }
 
-      const created = await sql`
-        INSERT INTO pets (family_id, name, species, breed, weight_kg, avatar_emoji)
-        VALUES (${ctx.family.id}, ${name}, ${species}, ${breed}, ${weightKg}, ${avatarEmoji})
-        RETURNING id, name, species, breed, weight_kg, avatar_emoji, is_archived, created_at
-      `;
+      const created = hasAppearance
+        ? await sql`
+            INSERT INTO pets (family_id, name, species, breed, weight_kg, avatar_emoji, appearance)
+            VALUES (${ctx.family.id}, ${name}, ${species}, ${breed}, ${weightKg}, ${avatarEmoji}, ${appearance}::jsonb)
+            RETURNING id, name, species, breed, weight_kg, avatar_emoji, appearance, is_archived, created_at
+          `
+        : await sql`
+            INSERT INTO pets (family_id, name, species, breed, weight_kg, avatar_emoji)
+            VALUES (${ctx.family.id}, ${name}, ${species}, ${breed}, ${weightKg}, ${avatarEmoji})
+            RETURNING id, name, species, breed, weight_kg, avatar_emoji, is_archived, created_at
+          `;
 
       return res.status(201).json({ ok: true, pet: created[0] });
     }
@@ -86,15 +115,34 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
 
       const name = String(body.name || '').trim();
-      const breed = String(body.breed || '').trim() || null;
-      const weightKg = body.weightKg !== undefined && body.weightKg !== '' ? Number(body.weightKg) : null;
-      await sql`
-        UPDATE pets
-        SET name = COALESCE(NULLIF(${name}, ''), name),
-            breed = ${breed},
-            weight_kg = ${weightKg}
-        WHERE id = ${petId} AND family_id = ${ctx.family.id}
-      `;
+      const species = body.species === 'cat' || body.species === 'other' || body.species === 'dog' ? body.species : null;
+      const breed = body.breed !== undefined ? String(body.breed || '').trim() || null : undefined;
+      const weightKg = body.weightKg !== undefined && body.weightKg !== '' && body.weightKg !== null ? Number(body.weightKg) : null;
+      const avatarEmoji = body.avatarEmoji ? String(body.avatarEmoji) : species === 'cat' ? '🐱' : species === 'other' ? '🐾' : species === 'dog' ? '🐶' : null;
+      const appearance = body.appearance && typeof body.appearance === 'object' ? JSON.stringify(body.appearance) : null;
+
+      if (hasAppearance) {
+        await sql`
+          UPDATE pets
+          SET name = COALESCE(NULLIF(${name}, ''), name),
+              species = COALESCE(${species}, species),
+              breed = ${breed === undefined ? null : breed},
+              weight_kg = COALESCE(${weightKg}, weight_kg),
+              avatar_emoji = COALESCE(${avatarEmoji}, avatar_emoji),
+              appearance = COALESCE(${appearance}::jsonb, appearance)
+          WHERE id = ${petId} AND family_id = ${ctx.family.id}
+        `;
+      } else {
+        await sql`
+          UPDATE pets
+          SET name = COALESCE(NULLIF(${name}, ''), name),
+              species = COALESCE(${species}, species),
+              breed = ${breed === undefined ? null : breed},
+              weight_kg = COALESCE(${weightKg}, weight_kg),
+              avatar_emoji = COALESCE(${avatarEmoji}, avatar_emoji)
+          WHERE id = ${petId} AND family_id = ${ctx.family.id}
+        `;
+      }
       return res.status(200).json({ ok: true });
     }
 

@@ -4,6 +4,9 @@ import { billingMonthNow, getSql } from './db.js';
 
 const COOKIE_NAME = 'petcare_session';
 
+// Temporary full PRO unlock for early access experience
+export const TEMP_FULL_PRO_ACCESS = true;
+
 export function hashPassword(password: string): string {
   const salt = crypto.randomBytes(16).toString('hex');
   const derived = crypto.scryptSync(password, salt, 64).toString('hex');
@@ -104,7 +107,7 @@ export interface AuthContext {
     status: string;
     isTrial: boolean;
     isIntroOffer: boolean;
-    vipSource: 'subscription' | 'referral_bonus' | 'free';
+    vipSource: 'subscription' | 'referral_bonus' | 'promo_temp' | 'free';
     currentPeriodEnd: string | null;
     vipDaysRemaining: number;
     ocrMonthlyLimit: number | null;
@@ -186,9 +189,14 @@ export async function getAuthContext(req: VercelRequest): Promise<AuthContext | 
   const bonusEndMs = u.vip_bonus_expires_at ? new Date(u.vip_bonus_expires_at).getTime() : 0;
   const hasReferralVip = bonusEndMs > nowMs;
 
-  const isVip = hasPaidSub || hasReferralVip;
+  const isVip = TEMP_FULL_PRO_ACCESS || hasPaidSub || hasReferralVip;
   const effectiveEndMs = Math.max(hasPaidSub ? subEndMs : 0, hasReferralVip ? bonusEndMs : 0);
-  const vipDaysRemaining = effectiveEndMs > nowMs ? Math.ceil((effectiveEndMs - nowMs) / 86400000) : 0;
+  const vipDaysRemaining =
+    effectiveEndMs > nowMs
+      ? Math.ceil((effectiveEndMs - nowMs) / 86400000)
+      : TEMP_FULL_PRO_ACCESS
+      ? 30
+      : 0;
 
   const billingMonth = billingMonthNow(u.timezone || 'Asia/Taipei');
   const ocrRows = await sql`
@@ -222,11 +230,17 @@ export async function getAuthContext(req: VercelRequest): Promise<AuthContext | 
     },
     entitlement: {
       isVip,
-      plan: sub.plan,
+      plan: hasPaidSub ? sub.plan : TEMP_FULL_PRO_ACCESS ? 'pro_annual' : sub.plan,
       status: sub.status,
       isTrial: Boolean(sub.is_trial),
       isIntroOffer: Boolean(sub.is_intro_offer),
-      vipSource: hasPaidSub ? 'subscription' : hasReferralVip ? 'referral_bonus' : 'free',
+      vipSource: hasPaidSub
+        ? 'subscription'
+        : hasReferralVip
+        ? 'referral_bonus'
+        : TEMP_FULL_PRO_ACCESS
+        ? 'promo_temp'
+        : 'free',
       currentPeriodEnd: sub.current_period_end ? new Date(sub.current_period_end).toISOString() : null,
       vipDaysRemaining,
       ocrMonthlyLimit: isVip ? null : 3,

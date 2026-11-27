@@ -18,6 +18,7 @@ interface GuestPetPayload {
   breed?: string;
   weightKg?: number | null;
   avatarEmoji?: string;
+  appearance?: Record<string, unknown>;
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -110,28 +111,46 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         `;
       }
 
-      // Migrate primary guest pet if provided, or seed safe-harbor demo pet
-      const primaryGuestPet = guestPets[0];
-      const petName = primaryGuestPet?.name?.trim() || '波波';
-      const petSpecies =
-        primaryGuestPet?.species === 'cat' || primaryGuestPet?.species === 'other' ? primaryGuestPet.species : 'dog';
-      const petBreed = primaryGuestPet?.breed?.trim() || (petSpecies === 'cat' ? '米克斯橘貓' : '柴犬');
-      const petWeight = typeof primaryGuestPet?.weightKg === 'number' ? primaryGuestPet.weightKg : 9.4;
-      const petEmoji = primaryGuestPet?.avatarEmoji || (petSpecies === 'cat' ? '🐱' : '🐶');
+      // Ensure appearance column safely before migrating guest pets
+      let hasAppearance = false;
+      try {
+        await sql`ALTER TABLE pets ADD COLUMN IF NOT EXISTS appearance JSONB`;
+        hasAppearance = true;
+      } catch {
+        hasAppearance = false;
+      }
 
-      const petRows = await sql`
-        INSERT INTO pets (family_id, name, species, breed, weight_kg, avatar_emoji)
-        VALUES (${familyId}, ${petName}, ${petSpecies}, ${petBreed}, ${petWeight}, ${petEmoji})
-        RETURNING id
-      `;
-      const petId = petRows[0].id;
+      const petsToInsert = guestPets.length > 0 ? guestPets.slice(0, 10) : [{}];
+      let primaryPetId = '';
+      for (let i = 0; i < petsToInsert.length; i++) {
+        const gp = petsToInsert[i];
+        const petName = gp?.name?.trim() || (i === 0 ? '波波' : `毛孩 ${i + 1}`);
+        const petSpecies = gp?.species === 'cat' || gp?.species === 'other' ? gp.species : 'dog';
+        const petBreed = gp?.breed?.trim() || (petSpecies === 'cat' ? '米克斯橘貓' : '柴犬');
+        const petWeight = typeof gp?.weightKg === 'number' ? gp.weightKg : 9.4;
+        const petEmoji = gp?.avatarEmoji || (petSpecies === 'cat' ? '🐱' : petSpecies === 'other' ? '🐾' : '🐶');
+        const appJson = gp?.appearance ? JSON.stringify(gp.appearance) : null;
+
+        const petRows = hasAppearance
+          ? await sql`
+              INSERT INTO pets (family_id, name, species, breed, weight_kg, avatar_emoji, appearance)
+              VALUES (${familyId}, ${petName}, ${petSpecies}, ${petBreed}, ${petWeight}, ${petEmoji}, ${appJson}::jsonb)
+              RETURNING id
+            `
+          : await sql`
+              INSERT INTO pets (family_id, name, species, breed, weight_kg, avatar_emoji)
+              VALUES (${familyId}, ${petName}, ${petSpecies}, ${petBreed}, ${petWeight}, ${petEmoji})
+              RETURNING id
+            `;
+        if (i === 0) primaryPetId = petRows[0].id;
+      }
 
       const rxRows = await sql`
         INSERT INTO prescriptions (
           family_id, pet_id, medication_name, clinic_name, dosage_text, meal_timing, total_days, source, created_by
         )
         VALUES (
-          ${familyId}, ${petId}, '胃潰寧 GastroWell (範例)', '晴空動物醫院 (範例)', '每次 1 顆・每日 2 次', 'after_meal', 7, 'manual_input', ${userId}
+          ${familyId}, ${primaryPetId}, '胃潰寧 GastroWell (範例)', '晴空動物醫院 (範例)', '每次 1 顆・每日 2 次', 'after_meal', 7, 'manual_input', ${userId}
         )
         RETURNING id
       `;
@@ -140,8 +159,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       await sql`
         INSERT INTO dose_schedules (family_id, pet_id, prescription_id, scheduled_time, label)
         VALUES
-          (${familyId}, ${petId}, ${rxId}, '08:30:00', '早飯後照護紀錄'),
-          (${familyId}, ${petId}, ${rxId}, '20:00:00', '晚飯後照護紀錄')
+          (${familyId}, ${primaryPetId}, ${rxId}, '08:30:00', '早飯後照護紀錄'),
+          (${familyId}, ${primaryPetId}, ${rxId}, '20:00:00', '晚飯後照護紀錄')
       `;
 
       const token = generateOpaqueToken();
@@ -237,7 +256,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         });
       }
 
-      // Execute account deletion (QA Fix 7.9)
       for (const fam of soleOwnerFamilies) {
         if (fam.total_members > 1 && body.transferOwner === true) {
           const candidates = await sql`

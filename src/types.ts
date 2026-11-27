@@ -1,5 +1,18 @@
 export type TabId = 'today' | 'ocr' | 'family' | 'history' | 'settings';
 
+export type CoatPattern = 'bicolor' | 'solid' | 'tabby' | 'calico' | 'pointed';
+
+export interface PetAppearance {
+  breedId?: string;
+  primaryColor: string;
+  secondaryColor?: string;
+  pattern?: CoatPattern;
+  collarColor?: string;
+  photoMatched?: boolean;
+  photoSwatchHexes?: string[];
+  photoMatchNote?: string;
+}
+
 export interface AuthContext {
   user: {
     id: string;
@@ -25,7 +38,7 @@ export interface AuthContext {
     status: string;
     isTrial: boolean;
     isIntroOffer: boolean;
-    vipSource: 'subscription' | 'referral_bonus' | 'free';
+    vipSource: 'subscription' | 'referral_bonus' | 'promo_temp' | 'free';
     currentPeriodEnd: string | null;
     vipDaysRemaining: number;
     ocrMonthlyLimit: number | null;
@@ -44,6 +57,7 @@ export interface Pet {
   breed: string | null;
   weight_kg: number | null;
   avatar_emoji: string;
+  appearance?: PetAppearance | null;
 }
 
 export interface Prescription {
