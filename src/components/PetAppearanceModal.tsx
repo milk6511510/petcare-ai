@@ -1,13 +1,13 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Camera, Palette, Sparkles, Upload, X } from 'lucide-react';
+import { Camera, Palette, Sliders, Sparkles, Upload, X } from 'lucide-react';
 import {
-  COAT_COLOR_PRESETS,
   COLLAR_COLOR_SWATCHES,
   findBreedOption,
   getBreedsForSpecies,
+  getPresetsForSpecies,
   type CoatPattern
 } from '../data/petCatalog';
-import { analyzePetPhoto } from '../lib/petAppearance';
+import { analyzePetPhoto, resolvePetVisual } from '../lib/petAppearance';
 import type { Pet, PetAppearance } from '../types';
 import { PetCompanion3D } from './PetCompanion3D';
 import { RoundedSelect, type RoundedSelectOption } from './RoundedSelect';
@@ -41,9 +41,9 @@ const PATTERN_OPTIONS: RoundedSelectOption[] = [
 ];
 
 const SPECIES_OPTIONS: RoundedSelectOption[] = [
-  { value: 'dog', label: '🐶 狗狗（含邊牧、柯基、柴犬、貴賓等）' },
-  { value: 'cat', label: '🐱 貓咪（含英短、美短、布偶、米克斯等）' },
-  { value: 'other', label: '🐾 其他毛孩（兔兔、倉鼠、刺蝟、鸚鵡等）' }
+  { value: 'dog', label: '🐶 狗狗（含邊牧、柴犬、哈士奇、柯基、法鬥等）' },
+  { value: 'cat', label: '🐱 貓咪（含英短、藍貓、賓士、虎斑、三花、布偶等）' },
+  { value: 'other', label: '🐾 其他毛孩（兔兔、倉鼠、刺蝟、鸚鵡等 3D 公仔）' }
 ];
 
 export const PetAppearanceModal: React.FC<PetAppearanceModalProps> = ({
@@ -59,10 +59,12 @@ export const PetAppearanceModal: React.FC<PetAppearanceModalProps> = ({
   const [selectedBreedId, setSelectedBreedId] = useState<string>('border-collie');
   const [customBreed, setCustomBreed] = useState('');
   const [weightText, setWeightText] = useState('');
+  const [presetId, setPresetId] = useState<string | undefined>(undefined);
   const [primaryColor, setPrimaryColor] = useState('#262A32');
   const [secondaryColor, setSecondaryColor] = useState('#F8F7F4');
   const [pattern, setPattern] = useState<CoatPattern>('bicolor');
   const [collarColor, setCollarColor] = useState('none');
+  const [showCustomSliders, setShowCustomSliders] = useState(false);
 
   const [photoPreviewUrl, setPhotoPreviewUrl] = useState<string | null>(null);
   const [photoMatched, setPhotoMatched] = useState(false);
@@ -89,24 +91,28 @@ export const PetAppearanceModal: React.FC<PetAppearanceModalProps> = ({
         setCustomBreed(initialPet.breed || '');
       }
 
+      setPresetId(initialPet.appearance?.presetId);
       setPrimaryColor(initialPet.appearance?.primaryColor || matchedBreed?.defaultPrimary || '#D88342');
       setSecondaryColor(initialPet.appearance?.secondaryColor || matchedBreed?.defaultSecondary || '#FAF6F0');
       setPattern(initialPet.appearance?.pattern || matchedBreed?.defaultPattern || 'bicolor');
       setCollarColor(initialPet.appearance?.collarColor || 'none');
       setPhotoMatched(Boolean(initialPet.appearance?.photoMatched));
       setPhotoSwatches(initialPet.appearance?.photoSwatchHexes || []);
+      setShowCustomSliders(false);
     } else {
       setName('');
       setSpecies('dog');
       setSelectedBreedId('border-collie');
       setCustomBreed('');
       setWeightText('');
+      setPresetId(undefined);
       setPrimaryColor('#262A32');
       setSecondaryColor('#F8F7F4');
       setPattern('bicolor');
       setCollarColor('none');
       setPhotoMatched(false);
       setPhotoSwatches([]);
+      setShowCustomSliders(false);
     }
   }, [open, mode, initialPet]);
 
@@ -126,6 +132,8 @@ export const PetAppearanceModal: React.FC<PetAppearanceModalProps> = ({
     return list;
   }, [species, primaryColor]);
 
+  const speciesPresets = useMemo(() => getPresetsForSpecies(species), [species]);
+
   const activeBreedObj = useMemo(() => {
     if (selectedBreedId === 'custom') return null;
     return getBreedsForSpecies(species).find((b) => b.id === selectedBreedId) || null;
@@ -138,6 +146,7 @@ export const PetAppearanceModal: React.FC<PetAppearanceModalProps> = ({
 
   const previewAppearance: PetAppearance = {
     breedId: selectedBreedId !== 'custom' ? selectedBreedId : undefined,
+    presetId,
     primaryColor,
     secondaryColor,
     pattern,
@@ -146,9 +155,20 @@ export const PetAppearanceModal: React.FC<PetAppearanceModalProps> = ({
     photoSwatchHexes: photoSwatches
   };
 
+  const visualStatus = useMemo(
+    () =>
+      resolvePetVisual({
+        species,
+        breed: effectiveBreedText,
+        appearance: previewAppearance
+      }),
+    [species, effectiveBreedText, previewAppearance]
+  );
+
   function handleSpeciesChange(nextVal: string) {
     const nextSp = (nextVal === 'cat' || nextVal === 'other' ? nextVal : 'dog') as 'dog' | 'cat' | 'other';
     setSpecies(nextSp);
+    setPresetId(undefined);
     const list = getBreedsForSpecies(nextSp);
     const first = list[0];
     if (first) {
@@ -162,6 +182,7 @@ export const PetAppearanceModal: React.FC<PetAppearanceModalProps> = ({
 
   function handleBreedChange(nextId: string) {
     setSelectedBreedId(nextId);
+    setPresetId(undefined);
     if (nextId === 'custom') return;
     const found = getBreedsForSpecies(species).find((b) => b.id === nextId);
     if (found) {
@@ -183,6 +204,7 @@ export const PetAppearanceModal: React.FC<PetAppearanceModalProps> = ({
       reader.readAsDataURL(file);
 
       const res = await analyzePetPhoto(file, species);
+      setPresetId(res.presetId);
       setPrimaryColor(res.primaryColor);
       setSecondaryColor(res.secondaryColor);
       setPattern(res.pattern);
@@ -195,7 +217,7 @@ export const PetAppearanceModal: React.FC<PetAppearanceModalProps> = ({
         setSelectedBreedId(res.suggestedBreedId);
       }
     } catch {
-      setPhotoNote('照片分析失敗，請改選 JPG / PNG 圖片或直接手動捏選毛色。');
+      setPhotoNote('照片分析失敗，請改選 JPG / PNG 圖片或直接點選預設毛色。');
     } finally {
       setPhotoAnalyzing(false);
     }
@@ -244,7 +266,7 @@ export const PetAppearanceModal: React.FC<PetAppearanceModalProps> = ({
               {mode === 'create' ? '新增毛孩・3D 公仔客製工坊' : `編輯 ${initialPet?.name} 品種與 3D 外觀`}
             </h2>
             <p className="text-xs text-[var(--ink-secondary)]">
-              支援全品種選擇／自訂填寫、自由捏選毛色，或上傳毛孩照片自動提取色調（免額外金鑰）
+              雙軌外觀引擎：常見毛色使用預渲染 3D 公仔零破圖呈現，並支援柔邊自訂微調與拍照自動配對
             </p>
           </div>
         </div>
@@ -264,6 +286,17 @@ export const PetAppearanceModal: React.FC<PetAppearanceModalProps> = ({
                 previewOnly
               />
               <div className="mt-2 flex flex-wrap items-center justify-center gap-1.5 text-[10px] font-bold text-[var(--ink-secondary)]">
+                <span
+                  className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 border ${
+                    visualStatus.skipFurRecolor
+                      ? 'bg-[var(--status-ok-bg)] text-[var(--status-ok)] border-[var(--status-ok-border)]'
+                      : 'bg-white text-[var(--brand-secondary)] border-white'
+                  }`}
+                >
+                  {visualStatus.skipFurRecolor ? '✨ 預渲染 3D 公仔（零破圖）' : '🎨 柔邊漸層自訂毛色'}
+                </span>
+              </div>
+              <div className="mt-1.5 flex flex-wrap items-center justify-center gap-1.5 text-[10px] font-bold text-[var(--ink-secondary)]">
                 <span className="inline-flex items-center gap-1 rounded-full bg-white px-2 py-0.5 border border-white">
                   <span className="h-2.5 w-2.5 rounded-full border border-black/15" style={{ backgroundColor: primaryColor }} />
                   主色 {primaryColor}
@@ -288,7 +321,7 @@ export const PetAppearanceModal: React.FC<PetAppearanceModalProps> = ({
 
               <label className="flex cursor-pointer items-center justify-center gap-2 rounded-2xl border border-dashed border-[var(--brand-secondary-border)] bg-white/85 px-3 py-2.5 text-xs font-bold text-[var(--ink-primary)] hover:bg-white transition">
                 <Upload className="h-3.5 w-3.5 text-[var(--brand-secondary)]" />
-                <span>{photoAnalyzing ? '分析毛色中...' : '選取毛孩照片自動套用'}</span>
+                <span>{photoAnalyzing ? '分析毛色中...' : '選取毛孩照片自動配對'}</span>
                 <input type="file" accept="image/*" onChange={handlePhotoUpload} className="hidden" />
               </label>
 
@@ -302,7 +335,10 @@ export const PetAppearanceModal: React.FC<PetAppearanceModalProps> = ({
                         <button
                           key={hex}
                           type="button"
-                          onClick={() => setPrimaryColor(hex)}
+                          onClick={() => {
+                            setPresetId(undefined);
+                            setPrimaryColor(hex);
+                          }}
                           title={`點選套用 ${hex}`}
                           className="h-4 w-4 rounded-full border border-black/15 shadow-sm transition hover:scale-110"
                           style={{ backgroundColor: hex }}
@@ -314,12 +350,12 @@ export const PetAppearanceModal: React.FC<PetAppearanceModalProps> = ({
               )}
 
               <p className="text-[10px] leading-relaxed text-[var(--ink-secondary)]">
-                {photoNote || '系統會在裝置端即時分析照片主毛色並套用至 3D 公仔；日後接入生圖 API 即可一鍵生成寫實個人化公仔。'}
+                {photoNote || '系統會在裝置端即時分析照片主毛色並優先匹配最接近的預渲染 3D 公仔；也可展開自訂調色微調。'}
               </p>
             </div>
           </div>
 
-          {/* Right Column: Basic Info + Searchable Rounded Breed Select + Custom Coat Colors */}
+          {/* Right Column: Basic Info + Searchable Rounded Breed Select + Presets & Smooth Custom Colors */}
           <div className="md:col-span-7 space-y-3">
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
               <div className="sm:col-span-2">
@@ -367,7 +403,7 @@ export const PetAppearanceModal: React.FC<PetAppearanceModalProps> = ({
                 options={breedOptions}
                 onChange={handleBreedChange}
                 searchable
-                searchPlaceholder="輸入關鍵字，如：邊牧、英短、柯基、布偶..."
+                searchPlaceholder="輸入關鍵字，如：邊牧、黑柴、英短、賓士、兔..."
                 ariaLabel="選擇毛孩品種"
               />
               {selectedBreedId === 'custom' && (
@@ -381,23 +417,35 @@ export const PetAppearanceModal: React.FC<PetAppearanceModalProps> = ({
               )}
             </div>
 
-            {/* Coat Color Presets ("自己捏選顏色") */}
+            {/* Dual-track Coat Color Selector */}
             <div className="rounded-[22px] border border-white/85 bg-white/75 p-3.5 space-y-2.5">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-extrabold text-[var(--ink-primary)]">自己捏選毛色與花紋</span>
-                <span className="text-[10px] font-semibold text-[var(--ink-muted)]">點擊色票即時預覽</span>
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs font-extrabold text-[var(--ink-primary)]">
+                  預設 3D 毛色公仔（零破圖切換）
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setShowCustomSliders((v) => !v)}
+                  className="inline-flex items-center gap-1 rounded-xl bg-white px-2.5 py-1 text-[10px] font-bold text-[var(--brand-secondary)] border border-white shadow-sm hover:bg-[var(--brand-primary-light)] transition"
+                >
+                  <Sliders className="h-3 w-3" />
+                  {showCustomSliders ? '收合自訂色盤' : '自訂色盤微調'}
+                </button>
               </div>
 
               <div className="flex flex-wrap gap-1.5">
-                {COAT_COLOR_PRESETS.map((preset) => {
+                {speciesPresets.map((preset) => {
                   const active =
-                    primaryColor.toUpperCase() === preset.primaryColor.toUpperCase() &&
-                    pattern === preset.pattern;
+                    (presetId === preset.id ||
+                      (primaryColor.toUpperCase() === preset.primaryColor.toUpperCase() &&
+                        pattern === preset.pattern));
+                  const hasNative = Boolean(preset.nativeAssetBySpecies?.[species]);
                   return (
                     <button
                       key={preset.id}
                       type="button"
                       onClick={() => {
+                        setPresetId(preset.id);
                         setPrimaryColor(preset.primaryColor);
                         setSecondaryColor(preset.secondaryColor);
                         setPattern(preset.pattern);
@@ -413,48 +461,64 @@ export const PetAppearanceModal: React.FC<PetAppearanceModalProps> = ({
                         style={{ backgroundColor: preset.primaryColor }}
                       />
                       <span>{preset.label.split('（')[0]}</span>
+                      {hasNative && (
+                        <span className="text-[9px] text-[var(--status-ok)]">●</span>
+                      )}
                     </button>
                   );
                 })}
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
-                <div className="flex items-center justify-between gap-2 rounded-2xl bg-white/90 px-3 py-2 border border-white">
-                  <span className="text-[11px] font-bold text-[var(--ink-secondary)]">主毛色自訂</span>
-                  <label className="flex cursor-pointer items-center gap-1.5">
-                    <span className="text-[10px] font-mono text-[var(--ink-muted)]">{primaryColor}</span>
-                    <input
-                      type="color"
-                      value={primaryColor}
-                      onChange={(e) => setPrimaryColor(e.target.value.toUpperCase())}
-                      className="h-6 w-8 cursor-pointer rounded-lg border-0 bg-transparent p-0"
-                    />
-                  </label>
-                </div>
+              {showCustomSliders && (
+                <div className="space-y-2.5 pt-1 border-t border-white/80">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    <div className="flex items-center justify-between gap-2 rounded-2xl bg-white/90 px-3 py-2 border border-white">
+                      <span className="text-[11px] font-bold text-[var(--ink-secondary)]">主毛色自訂</span>
+                      <label className="flex cursor-pointer items-center gap-1.5">
+                        <span className="text-[10px] font-mono text-[var(--ink-muted)]">{primaryColor}</span>
+                        <input
+                          type="color"
+                          value={primaryColor}
+                          onChange={(e) => {
+                            setPresetId(undefined);
+                            setPrimaryColor(e.target.value.toUpperCase());
+                          }}
+                          className="h-6 w-8 cursor-pointer rounded-lg border-0 bg-transparent p-0"
+                        />
+                      </label>
+                    </div>
 
-                <div className="flex items-center justify-between gap-2 rounded-2xl bg-white/90 px-3 py-2 border border-white">
-                  <span className="text-[11px] font-bold text-[var(--ink-secondary)]">胸腹 / 副色</span>
-                  <label className="flex cursor-pointer items-center gap-1.5">
-                    <span className="text-[10px] font-mono text-[var(--ink-muted)]">{secondaryColor}</span>
-                    <input
-                      type="color"
-                      value={secondaryColor}
-                      onChange={(e) => setSecondaryColor(e.target.value.toUpperCase())}
-                      className="h-6 w-8 cursor-pointer rounded-lg border-0 bg-transparent p-0"
-                    />
-                  </label>
-                </div>
-              </div>
+                    <div className="flex items-center justify-between gap-2 rounded-2xl bg-white/90 px-3 py-2 border border-white">
+                      <span className="text-[11px] font-bold text-[var(--ink-secondary)]">胸腹 / 副色</span>
+                      <label className="flex cursor-pointer items-center gap-1.5">
+                        <span className="text-[10px] font-mono text-[var(--ink-muted)]">{secondaryColor}</span>
+                        <input
+                          type="color"
+                          value={secondaryColor}
+                          onChange={(e) => {
+                            setPresetId(undefined);
+                            setSecondaryColor(e.target.value.toUpperCase());
+                          }}
+                          className="h-6 w-8 cursor-pointer rounded-lg border-0 bg-transparent p-0"
+                        />
+                      </label>
+                    </div>
+                  </div>
 
-              <div>
-                <label className="mb-1 block text-[11px] font-bold text-[var(--ink-secondary)]">毛色分佈花紋</label>
-                <RoundedSelect
-                  value={pattern}
-                  options={PATTERN_OPTIONS}
-                  onChange={(v) => setPattern(v as CoatPattern)}
-                  ariaLabel="選擇毛色花紋"
-                />
-              </div>
+                  <div>
+                    <label className="mb-1 block text-[11px] font-bold text-[var(--ink-secondary)]">毛色分佈花紋（柔邊混合）</label>
+                    <RoundedSelect
+                      value={pattern}
+                      options={PATTERN_OPTIONS}
+                      onChange={(v) => {
+                        setPresetId(undefined);
+                        setPattern(v as CoatPattern);
+                      }}
+                      ariaLabel="選擇毛色花紋"
+                    />
+                  </div>
+                </div>
+              )}
 
               <div>
                 <div className="mb-1 text-[11px] font-bold text-[var(--ink-secondary)]">項圈與鈴鐺配色</div>

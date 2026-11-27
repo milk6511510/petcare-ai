@@ -37,98 +37,28 @@ export function getPetMascotSrc(
   return visual.baseSrc || '/assets/pets/shiba-bobo.webp';
 }
 
-const OtherPet3DSvg: React.FC<{
-  kind: 'other-bunny' | 'other-hamster' | 'other-bird';
-  primaryColor: string;
-  secondaryColor: string;
-  collarColor: string;
-  className?: string;
-}> = ({ kind, primaryColor, secondaryColor, collarColor, className = 'h-28 w-28' }) => {
-  const gradId = `other-grad-${kind}-${primaryColor.replace('#', '')}`;
-  return (
-    <svg viewBox="0 0 200 200" className={className} aria-hidden="true">
-      <defs>
-        <radialGradient id={gradId} cx="38%" cy="32%" r="68%">
-          <stop offset="0%" stopColor="#FFFFFF" stopOpacity="0.55" />
-          <stop offset="35%" stopColor={primaryColor} />
-          <stop offset="100%" stopColor={primaryColor} stopOpacity="0.88" />
-        </radialGradient>
-      </defs>
-      {kind === 'other-bunny' && (
-        <>
-          <ellipse cx="72" cy="52" rx="16" ry="38" transform="rotate(-12 72 52)" fill={primaryColor} />
-          <ellipse cx="128" cy="52" rx="16" ry="38" transform="rotate(12 128 52)" fill={primaryColor} />
-          <ellipse cx="73" cy="54" rx="8" ry="26" transform="rotate(-12 73 54)" fill="#F6C8CF" />
-          <ellipse cx="127" cy="54" rx="8" ry="26" transform="rotate(12 127 54)" fill="#F6C8CF" />
-        </>
-      )}
-      {kind === 'other-hamster' && (
-        <>
-          <circle cx="58" cy="64" r="18" fill={primaryColor} />
-          <circle cx="142" cy="64" r="18" fill={primaryColor} />
-          <circle cx="58" cy="64" r="10" fill="#F6C8CF" />
-          <circle cx="142" cy="64" r="10" fill="#F6C8CF" />
-        </>
-      )}
-      {kind === 'other-bird' && (
-        <path d="M96 36 C102 18, 122 22, 118 44 Z" fill="#F5B841" />
-      )}
-      <ellipse cx="100" cy="142" rx="46" ry="40" fill={`url(#${gradId})`} />
-      <ellipse cx="100" cy="148" rx="28" ry="26" fill={secondaryColor} />
-      <circle cx="100" cy="96" r="46" fill={`url(#${gradId})`} />
-      <ellipse cx="100" cy="108" rx="30" ry="22" fill={secondaryColor} opacity="0.9" />
-      <circle cx="80" cy="90" r="6.5" fill="#1F1B18" />
-      <circle cx="120" cy="90" r="6.5" fill="#1F1B18" />
-      <circle cx="78" cy="87.5" r="2.2" fill="#FFFFFF" />
-      <circle cx="118" cy="87.5" r="2.2" fill="#FFFFFF" />
-      <ellipse cx="66" cy="103" rx="7" ry="4" fill="#F4A3A8" opacity="0.65" />
-      <ellipse cx="134" cy="103" rx="7" ry="4" fill="#F4A3A8" opacity="0.65" />
-      {kind === 'other-bird' ? (
-        <polygon points="94,97 106,97 100,108" fill="#E88B38" />
-      ) : (
-        <ellipse cx="100" cy="100" rx="5" ry="3.5" fill="#EA8E95" />
-      )}
-      {collarColor !== 'none' && (
-        <>
-          <path
-            d="M 67 128 Q 100 140 133 128"
-            fill="none"
-            stroke={collarColor}
-            strokeWidth="8"
-            strokeLinecap="round"
-          />
-          <circle cx="100" cy="138" r="6" fill="#F2B84B" stroke="#C68928" strokeWidth="1.5" />
-        </>
-      )}
-    </svg>
-  );
-};
-
 export function useResolvedPetImageSrc(
   species: 'dog' | 'cat' | 'other',
   breed?: string | null,
   appearance?: PetAppearance | null
 ): {
-  imgSrc: string | null;
+  imgSrc: string;
   baseAsset: ReturnType<typeof resolvePetVisual>['baseAsset'];
   primaryColor: string;
   secondaryColor: string;
   collarColor: string;
   breedLabel: string;
+  isNativePreset: boolean;
 } {
   const visual = resolvePetVisual({
     species,
     breed: breed ?? null,
     appearance: appearance ?? null
   });
-  const [resolvedUrl, setResolvedUrl] = useState<string | null>(visual.baseSrc);
+  const [resolvedUrl, setResolvedUrl] = useState<string>(visual.baseSrc);
 
   useEffect(() => {
     let cancelled = false;
-    if (!visual.baseSrc) {
-      setResolvedUrl(null);
-      return;
-    }
     if (visual.isDefaultNativeCoat) {
       setResolvedUrl(visual.baseSrc);
       return;
@@ -137,7 +67,8 @@ export function useResolvedPetImageSrc(
       primaryColor: visual.primaryColor,
       secondaryColor: visual.secondaryColor,
       pattern: visual.pattern,
-      collarColor: visual.collarColor
+      collarColor: visual.collarColor,
+      skipFurRecolor: visual.skipFurRecolor
     })
       .then((url) => {
         if (!cancelled) setResolvedUrl(url);
@@ -156,16 +87,18 @@ export function useResolvedPetImageSrc(
     visual.secondaryColor,
     visual.pattern,
     visual.collarColor,
-    visual.isDefaultNativeCoat
+    visual.isDefaultNativeCoat,
+    visual.skipFurRecolor
   ]);
 
   return {
-    imgSrc: resolvedUrl,
+    imgSrc: resolvedUrl || visual.baseSrc,
     baseAsset: visual.baseAsset,
     primaryColor: visual.primaryColor,
     secondaryColor: visual.secondaryColor,
     collarColor: visual.collarColor,
-    breedLabel: visual.breedLabel
+    breedLabel: visual.breedLabel,
+    isNativePreset: visual.skipFurRecolor
   };
 }
 
@@ -173,25 +106,11 @@ export const PetAvatarBadge: React.FC<{
   pet: Pick<Pet, 'name' | 'species' | 'breed' | 'appearance' | 'avatar_emoji'>;
   sizeClass?: string;
 }> = ({ pet, sizeClass = 'h-6 w-6' }) => {
-  const { imgSrc, baseAsset, primaryColor, secondaryColor, collarColor } = useResolvedPetImageSrc(
+  const { imgSrc } = useResolvedPetImageSrc(
     pet.species,
     pet.breed,
     pet.appearance
   );
-
-  if (!imgSrc && (baseAsset === 'other-bunny' || baseAsset === 'other-hamster' || baseAsset === 'other-bird')) {
-    return (
-      <span className={`inline-flex ${sizeClass} items-center justify-center rounded-full bg-white/95 p-0.5 shadow-sm overflow-hidden`}>
-        <OtherPet3DSvg
-          kind={baseAsset}
-          primaryColor={primaryColor}
-          secondaryColor={secondaryColor}
-          collarColor={collarColor}
-          className="h-full w-full"
-        />
-      </span>
-    );
-  }
 
   return (
     <img
@@ -222,7 +141,7 @@ export function PetCompanion3D({
   const timerRef = useRef<number | null>(null);
 
   const isCat = species === 'cat';
-  const { imgSrc, baseAsset, primaryColor, secondaryColor, collarColor, breedLabel } = useResolvedPetImageSrc(
+  const { imgSrc, breedLabel } = useResolvedPetImageSrc(
     species,
     breed,
     appearance
@@ -311,32 +230,19 @@ export function PetCompanion3D({
     bouncing ? 'pet-3d-jump' : allDone ? 'pet-3d-celebrate' : 'pet-3d-float'
   }`;
 
-  const renderFigurine = () => {
-    if (!imgSrc && (baseAsset === 'other-bunny' || baseAsset === 'other-hamster' || baseAsset === 'other-bird')) {
-      return (
-        <OtherPet3DSvg
-          kind={baseAsset}
-          primaryColor={primaryColor}
-          secondaryColor={secondaryColor}
-          collarColor={collarColor}
-          className={figurineClass}
-        />
-      );
-    }
-    return (
-      <img
-        src={imgSrc || '/assets/pets/shiba-bobo.webp'}
-        alt={`3D ${breedLabel}公仔 ${petName}`}
-        className={figurineClass}
-        style={{
-          filter: compact
-            ? 'drop-shadow(0 8px 12px rgba(46, 36, 30, 0.14))'
-            : 'drop-shadow(0 12px 16px rgba(46, 36, 30, 0.16))'
-        }}
-        draggable={false}
-      />
-    );
-  };
+  const renderFigurine = () => (
+    <img
+      src={imgSrc || '/assets/pets/shiba-bobo.webp'}
+      alt={`3D ${breedLabel}公仔 ${petName}`}
+      className={figurineClass}
+      style={{
+        filter: compact
+          ? 'drop-shadow(0 8px 12px rgba(46, 36, 30, 0.14))'
+          : 'drop-shadow(0 12px 16px rgba(46, 36, 30, 0.16))'
+      }}
+      draggable={false}
+    />
+  );
 
   if (compact) {
     return (

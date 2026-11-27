@@ -4,6 +4,7 @@ export type CoatPattern = 'bicolor' | 'solid' | 'tabby' | 'calico' | 'pointed';
 
 export interface PetAppearance {
   breedId?: string;
+  presetId?: string;
   primaryColor: string;
   secondaryColor?: string;
   pattern?: CoatPattern;
