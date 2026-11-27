@@ -648,6 +648,86 @@
       box-shadow: 0 0 0 3px var(--brand-primary-soft);
     }
 
+    .rounded-dd {
+      position: relative;
+      width: 100%;
+    }
+    .rounded-dd-trigger {
+      width: 100%;
+      padding: 14px 16px;
+      border: 1.5px solid var(--border-subtle);
+      border-radius: 16px;
+      background: var(--bg-surface);
+      color: var(--ink-primary);
+      font-size: 0.95rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      text-align: left;
+    }
+    .rounded-dd-trigger:hover, .rounded-dd-trigger[aria-expanded='true'] {
+      border-color: var(--border-focus);
+      box-shadow: 0 0 0 3px var(--brand-primary-soft);
+    }
+    .rounded-dd-chevron {
+      width: 16px;
+      height: 16px;
+      flex-shrink: 0;
+      color: var(--ink-secondary);
+      transition: transform 0.2s ease;
+    }
+    .rounded-dd-trigger[aria-expanded='true'] .rounded-dd-chevron {
+      transform: rotate(180deg);
+      color: var(--brand-primary);
+    }
+    .rounded-dd-menu {
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: calc(100% + 8px);
+      z-index: 60;
+      padding: 6px;
+      border-radius: 20px;
+      border: 1px solid rgba(255, 255, 255, 0.92);
+      background: rgba(255, 252, 248, 0.96);
+      backdrop-filter: blur(18px);
+      box-shadow: 0 18px 40px rgba(46, 36, 30, 0.16);
+      display: none;
+      flex-direction: column;
+      gap: 3px;
+    }
+    .rounded-dd-menu.open {
+      display: flex;
+    }
+    .rounded-dd-opt {
+      width: 100%;
+      text-align: left;
+      padding: 10px 12px;
+      border: none;
+      border-radius: 14px;
+      background: transparent;
+      color: var(--ink-primary);
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      transition: background 0.15s ease;
+    }
+    .rounded-dd-opt:hover {
+      background: rgba(255, 255, 255, 0.9);
+    }
+    .rounded-dd-opt.selected {
+      background: var(--brand-primary-soft);
+      color: var(--brand-primary-hover);
+      font-weight: 800;
+    }
+
     .submit-btn {
       display: inline-flex;
       align-items: center;
@@ -2041,12 +2121,26 @@
                     placeholder="輸入您的 Email（如：petlover@example.com）"
                     required
                   >
-                  <select id="hero-pet-select" class="select-field">
-                    <option value="dog">🐶 狗狗家庭</option>
-                    <option value="cat">🐱 貓咪家庭</option>
-                    <option value="both" selected>🐾 貓狗雙全 / 多寵物</option>
-                    <option value="other">🐰 其他特寵家庭</option>
-                  </select>
+                  <div class="rounded-dd" id="hero-pet-dd">
+                    <input type="hidden" id="hero-pet-select" value="both">
+                    <button
+                      type="button"
+                      id="hero-pet-dd-trigger"
+                      class="rounded-dd-trigger"
+                      aria-haspopup="listbox"
+                      aria-expanded="false"
+                      onclick="toggleHeroPetMenu(event)"
+                    >
+                      <span id="hero-pet-dd-label">🐾 貓狗雙全 / 多寵物</span>
+                      <svg class="rounded-dd-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                    </button>
+                    <div id="hero-pet-dd-menu" class="rounded-dd-menu" role="listbox">
+                      <button type="button" class="rounded-dd-opt" data-value="dog" onclick="selectHeroPetOpt('dog', '🐶 狗狗家庭')">🐶 狗狗家庭</button>
+                      <button type="button" class="rounded-dd-opt" data-value="cat" onclick="selectHeroPetOpt('cat', '🐱 貓咪家庭')">🐱 貓咪家庭</button>
+                      <button type="button" class="rounded-dd-opt selected" data-value="both" onclick="selectHeroPetOpt('both', '🐾 貓狗雙全 / 多寵物')">🐾 貓狗雙全 / 多寵物</button>
+                      <button type="button" class="rounded-dd-opt" data-value="other" onclick="selectHeroPetOpt('other', '🐰 其他特寵家庭')">🐰 其他特寵家庭</button>
+                    </div>
+                  </div>
                 </div>
 
                 <button type="submit" id="hero-submit-btn" class="submit-btn">
@@ -3028,6 +3122,41 @@
         });
       }
     }
+
+    function toggleHeroPetMenu(ev) {
+      if (ev) ev.stopPropagation();
+      const trigger = document.getElementById('hero-pet-dd-trigger');
+      const menu = document.getElementById('hero-pet-dd-menu');
+      if (!trigger || !menu) return;
+      const isOpen = menu.classList.toggle('open');
+      trigger.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+    }
+
+    function selectHeroPetOpt(val, label) {
+      const hidden = document.getElementById('hero-pet-select');
+      const labelEl = document.getElementById('hero-pet-dd-label');
+      const menu = document.getElementById('hero-pet-dd-menu');
+      const trigger = document.getElementById('hero-pet-dd-trigger');
+      if (hidden) hidden.value = val;
+      if (labelEl) labelEl.textContent = label;
+      if (menu) {
+        menu.querySelectorAll('.rounded-dd-opt').forEach((btn) => {
+          btn.classList.toggle('selected', btn.getAttribute('data-value') === val);
+        });
+        menu.classList.remove('open');
+      }
+      if (trigger) trigger.setAttribute('aria-expanded', 'false');
+    }
+
+    document.addEventListener('click', function(ev) {
+      const wrap = document.getElementById('hero-pet-dd');
+      const menu = document.getElementById('hero-pet-dd-menu');
+      const trigger = document.getElementById('hero-pet-dd-trigger');
+      if (wrap && menu && !wrap.contains(ev.target)) {
+        menu.classList.remove('open');
+        if (trigger) trigger.setAttribute('aria-expanded', 'false');
+      }
+    });
 
     function showFeedback(element, htmlContent, statusClass) {
       if (!element) return;

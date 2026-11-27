@@ -12,6 +12,7 @@ import {
   Crown,
   FileText,
   Lock,
+  Palette,
   Pencil,
   Plus,
   RefreshCw,
@@ -23,8 +24,13 @@ import {
 import { AuthModal } from './components/AuthModal';
 import { LiquidGlassTabbar } from './components/LiquidGlassTabbar';
 import { PaywallModal } from './components/PaywallModal';
-import { PetCompanion3D, getPetMascotSrc } from './components/PetCompanion3D';
+import {
+  PetAppearanceModal,
+  type PetProfileSubmitPayload
+} from './components/PetAppearanceModal';
+import { PetAvatarBadge, PetCompanion3D } from './components/PetCompanion3D';
 import { ReportModal } from './components/ReportModal';
+import { RoundedSelect, type RoundedSelectOption } from './components/RoundedSelect';
 import {
   ScheduleEditorModal,
   type ScheduleEditorSubmitPayload
@@ -32,6 +38,7 @@ import {
 import { SettingsTab } from './components/SettingsTab';
 import { ThemeSwitcher } from './components/ThemeSwitcher';
 import { apiFetch, ApiError } from './lib/api';
+import { getEffectiveEntitlement } from './lib/entitlements';
 import { applyTheme, getStoredThemeId, THEME_OPTIONS, type ThemeId } from './lib/theme';
 import type {
   AuthContext,
@@ -45,6 +52,9 @@ import type {
   TabId
 } from './types';
 
+const GUEST_STORAGE_PETS_KEY = 'petcare_guest_pets_v1';
+const GUEST_STORAGE_SCHEDULES_KEY = 'petcare_guest_schedules_v1';
+
 const GUEST_DEFAULT_PETS: Pet[] = [
   {
     id: 'guest-pet-1',
@@ -52,7 +62,14 @@ const GUEST_DEFAULT_PETS: Pet[] = [
     species: 'dog',
     breed: '柴犬',
     weight_kg: 9.4,
-    avatar_emoji: '🐶'
+    avatar_emoji: '🐶',
+    appearance: {
+      breedId: 'shiba',
+      primaryColor: '#D88342',
+      secondaryColor: '#FBF6EE',
+      pattern: 'bicolor',
+      collarColor: 'none'
+    }
   }
 ];
 
@@ -91,6 +108,38 @@ const GUEST_DEFAULT_SCHEDULES: ScheduleItem[] = [
     today_logged_by: null,
     today_logged_at: null
   }
+];
+
+function loadInitialGuestPets(): Pet[] {
+  try {
+    const raw = localStorage.getItem(GUEST_STORAGE_PETS_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+  } catch {
+    // ignore storage errors
+  }
+  return GUEST_DEFAULT_PETS;
+}
+
+function loadInitialGuestSchedules(): ScheduleItem[] {
+  try {
+    const raw = localStorage.getItem(GUEST_STORAGE_SCHEDULES_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return parsed;
+    }
+  } catch {
+    // ignore storage errors
+  }
+  return GUEST_DEFAULT_SCHEDULES;
+}
+
+const OCR_MEAL_TIMING_OPTIONS: RoundedSelectOption[] = [
+  { value: 'after_meal', label: '飯後照護' },
+  { value: 'before_meal', label: '飯前照護' },
+  { value: 'before_bed', label: '睡前照護' }
 ];
 
 const FALLBACK_PLANS: PlanItem[] = [
@@ -157,9 +206,9 @@ export default function App() {
   const [context, setContext] = useState<AuthContext | null>(null);
   const [bootLoading, setBootLoading] = useState(true);
 
-  const [pets, setPets] = useState<Pet[]>(GUEST_DEFAULT_PETS);
-  const [selectedPetId, setSelectedPetId] = useState<string>('guest-pet-1');
-  const [schedules, setSchedules] = useState<ScheduleItem[]>(GUEST_DEFAULT_SCHEDULES);
+  const [pets, setPets] = useState<Pet[]>(() => loadInitialGuestPets());
+  const [selectedPetId, setSelectedPetId] = useState<string>(() => loadInitialGuestPets()[0]?.id || 'guest-pet-1');
+  const [schedules, setSchedules] = useState<ScheduleItem[]>(() => loadInitialGuestSchedules());
   const [conflicts, setConflicts] = useState<DoseConflict[]>([]);
   const [historyLogs, setHistoryLogs] = useState<HistoryLog[]>([]);
   const [historyLockedCount, setHistoryLockedCount] = useState(0);
@@ -183,11 +232,10 @@ export default function App() {
   const [scheduleSaving, setScheduleSaving] = useState(false);
   const [confirmResetAll, setConfirmResetAll] = useState(false);
 
-  // Add Pet form
-  const [showAddPet, setShowAddPet] = useState(false);
-  const [newPetName, setNewPetName] = useState('');
-  const [newPetSpecies, setNewPetSpecies] = useState<'dog' | 'cat' | 'other'>('cat');
-  const [newPetBreed, setNewPetBreed] = useState('');
+  // Pet Studio Modal (create / edit breed & 3D coat appearance)
+  const [petStudioOpen, setPetStudioOpen] = useState(false);
+  const [petStudioMode, setPetStudioMode] = useState<'create' | 'edit'>('create');
+  const [petSaving, setPetSaving] = useState(false);
 
   // OCR State
   const [ocrPreset, setOcrPreset] = useState<'heartcalm' | 'gastrowell' | 'soothecoat'>('heartcalm');
@@ -209,9 +257,31 @@ export default function App() {
   const [joinCodeInput, setJoinCodeInput] = useState('');
   const [copiedFamilyCode, setCopiedFamilyCode] = useState(false);
 
+  const eff = getEffectiveEntitlement(context);
+
   useEffect(() => {
     applyTheme(themeId);
   }, [themeId]);
+
+  useEffect(() => {
+    if (!context) {
+      try {
+        localStorage.setItem(GUEST_STORAGE_PETS_KEY, JSON.stringify(pets));
+      } catch {
+        // ignore quota errors
+      }
+    }
+  }, [pets, context]);
+
+  useEffect(() => {
+    if (!context) {
+      try {
+        localStorage.setItem(GUEST_STORAGE_SCHEDULES_KEY, JSON.stringify(schedules));
+      } catch {
+        // ignore quota errors
+      }
+    }
+  }, [schedules, context]);
 
   const showToast = useCallback((kind: 'ok' | 'warn' | 'err', text: string) => {
     setToast({ kind, text });
@@ -546,38 +616,93 @@ export default function App() {
     }
   }
 
-  async function handleAddPet(e: React.FormEvent) {
-    e.preventDefault();
-    if (!newPetName.trim()) return;
-
-    if (!context) {
-      if (pets.length >= 1) {
-        openPaywall('Trigger C：一般版僅限 1 隻寵物！請先連動雲端帳號並升級 PRO 或輸入好友邀請碼。');
+  async function handleSavePetStudio(payload: PetProfileSubmitPayload) {
+    setPetSaving(true);
+    try {
+      if (!context) {
+        if (payload.mode === 'create') {
+          const newId = `guest-pet-${Date.now()}`;
+          const newPet: Pet = {
+            id: newId,
+            name: payload.name,
+            species: payload.species,
+            breed: payload.breed,
+            weight_kg: payload.weightKg,
+            avatar_emoji: payload.avatarEmoji,
+            appearance: payload.appearance
+          };
+          setPets((prev) => [...prev, newPet]);
+          setSelectedPetId(newId);
+          showToast('ok', `✓ 已建立「${payload.name}」與專屬 3D 公仔外觀！`);
+        } else if (payload.petId) {
+          setPets((prev) =>
+            prev.map((p) =>
+              p.id === payload.petId
+                ? {
+                    ...p,
+                    name: payload.name,
+                    species: payload.species,
+                    breed: payload.breed,
+                    weight_kg: payload.weightKg,
+                    avatar_emoji: payload.avatarEmoji,
+                    appearance: payload.appearance
+                  }
+                : p
+            )
+          );
+          setSchedules((prev) =>
+            prev.map((s) =>
+              s.pet_id === payload.petId
+                ? { ...s, pet_name: payload.name, pet_emoji: payload.avatarEmoji }
+                : s
+            )
+          );
+          showToast('ok', `✓ 已更新「${payload.name}」的品種與 3D 毛色外觀！`);
+        }
+        setPetStudioOpen(false);
         return;
       }
-      return;
-    }
 
-    try {
-      await apiFetch('/api/pets', {
-        method: 'POST',
-        body: JSON.stringify({
-          name: newPetName.trim(),
-          species: newPetSpecies,
-          breed: newPetBreed.trim() || undefined
-        })
-      });
-      setNewPetName('');
-      setNewPetBreed('');
-      setShowAddPet(false);
-      await loadCloudWorkspace(context);
-      showToast('ok', '✓ 已新增毛孩檔案至雲端！');
+      if (payload.mode === 'create') {
+        const res = await apiFetch<{ ok: boolean; pet: Pet }>('/api/pets', {
+          method: 'POST',
+          body: JSON.stringify({
+            name: payload.name,
+            species: payload.species,
+            breed: payload.breed,
+            weightKg: payload.weightKg,
+            avatarEmoji: payload.avatarEmoji,
+            appearance: payload.appearance
+          })
+        });
+        await loadCloudWorkspace(context);
+        if (res.pet?.id) setSelectedPetId(res.pet.id);
+        showToast('ok', `✓ 已同步新增毛孩「${payload.name}」與 3D 外觀至雲端！`);
+      } else if (payload.petId) {
+        await apiFetch('/api/pets', {
+          method: 'PATCH',
+          body: JSON.stringify({
+            id: payload.petId,
+            name: payload.name,
+            species: payload.species,
+            breed: payload.breed,
+            weightKg: payload.weightKg,
+            avatarEmoji: payload.avatarEmoji,
+            appearance: payload.appearance
+          })
+        });
+        await loadCloudWorkspace(context);
+        showToast('ok', `✓ 已更新「${payload.name}」品種與 3D 公仔設定！`);
+      }
+      setPetStudioOpen(false);
     } catch (err) {
       if (err instanceof ApiError && err.status === 402) {
         openPaywall(err.message);
       } else {
-        showToast('err', err instanceof ApiError ? err.message : '新增失敗');
+        showToast('err', err instanceof ApiError ? err.message : '儲存毛孩資料失敗');
       }
+    } finally {
+      setPetSaving(false);
     }
   }
 
@@ -728,7 +853,7 @@ export default function App() {
   }
 
   const selectedPet = pets.find((p) => p.id === selectedPetId) ?? pets[0] ?? GUEST_DEFAULT_PETS[0];
-  const filteredSchedules = schedules.filter((s) => s.pet_id === selectedPetId || pets.length <= 1);
+  const filteredSchedules = schedules.filter((s) => s.pet_id === selectedPet.id || pets.length <= 1);
   const doneCount = filteredSchedules.filter((s) => Boolean(s.today_log_id)).length;
   const pendingCount = Math.max(0, filteredSchedules.length - doneCount);
   const unresolvedConflicts = conflicts.filter((c) => c.resolution_state === 'unresolved');
@@ -783,9 +908,9 @@ export default function App() {
             <div>
               <div className="flex items-center gap-2">
                 <h1 className="text-base sm:text-lg font-black tracking-tight">PetCare AI 拍立得寵物護理</h1>
-                {context?.entitlement.isVip ? (
+                {eff.isVip ? (
                   <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-[var(--brand-primary)] to-[var(--brand-gold)] px-2.5 py-0.5 text-[10px] font-extrabold text-white shadow-sm">
-                    <Crown className="h-3 w-3" /> VIP
+                    <Crown className="h-3 w-3" /> {eff.isTempProUnlock ? 'PRO 完整開放' : 'VIP'}
                   </span>
                 ) : (
                   <span className="rounded-full bg-white/80 px-2 py-0.5 text-[10px] font-bold text-[var(--ink-secondary)]">
@@ -795,8 +920,8 @@ export default function App() {
               </div>
               <p className="text-[11px] text-[var(--ink-secondary)]">
                 {context
-                  ? `Neon 雲端同步中 ・ ${context.family.name}（${context.family.memberCount}/${context.entitlement.maxFamilyMembers} 人）`
-                  : '目前為本機試用模式 ・ 登入即開啟 Neon 雲端帳號連動'}
+                  ? `Neon 雲端同步中 ・ ${context.family.name}（${context.family.memberCount}/${eff.maxFamilyMembers} 人）`
+                  : '目前為本機試用模式（已限時開放 PRO 完整權限） ・ 登入即可上雲同步'}
               </p>
             </div>
           </div>
@@ -832,7 +957,7 @@ export default function App() {
               className="flex items-center gap-1 rounded-2xl bg-white/85 px-3 py-2 text-xs font-extrabold text-[var(--ink-primary)] border border-white hover:bg-white"
             >
               <Sparkles className="h-3.5 w-3.5 text-[var(--brand-primary)]" />
-              {context?.entitlement.isVip ? 'VIP 方案' : '升級 PRO'}
+              {eff.isVip ? 'PRO 方案' : '升級 PRO'}
             </button>
           </div>
         </header>
@@ -843,7 +968,7 @@ export default function App() {
             <div className="flex items-center gap-2.5 text-xs text-[var(--ink-primary)]">
               <CloudOff className="h-4 w-4 text-[var(--brand-primary)] shrink-0" />
               <span>
-                <strong>尚未連動雲端帳號：</strong>目前資料僅暫存於瀏覽器。註冊或登入即可將毛孩資料上雲並領取 <strong>+14 天好友 VIP</strong> 資格！
+                <strong>尚未連動雲端帳號：</strong>目前資料保存於此裝置（已解鎖全品種 3D 公仔與完整 PRO 體驗）；註冊或登入即可同步家人！
               </span>
             </div>
             <button
@@ -906,25 +1031,40 @@ export default function App() {
             {/* Multi-pet Selector Pill Bar */}
             <div className="liquid-glass rounded-[24px] p-4">
               <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
-                <span className="text-xs font-extrabold text-[var(--ink-secondary)]">毛孩健康檔案</span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (context && !context.entitlement.isVip && pets.length >= 1) {
-                      openPaywall('Trigger C：一般版僅支援 1 隻毛孩檔案，升級 PRO 或輸入好友邀請碼即可新增第 2 隻毛孩！');
-                    } else {
-                      setShowAddPet((v) => !v);
-                    }
-                  }}
-                  className="flex items-center gap-1 rounded-xl bg-white/85 px-3 py-1.5 text-xs font-bold text-[var(--brand-primary)] border border-white"
-                >
-                  <Plus className="h-3.5 w-3.5" /> 新增毛孩
-                </button>
+                <span className="text-xs font-extrabold text-[var(--ink-secondary)]">
+                  毛孩健康檔案與 3D 專屬公仔（PRO 無限隻數）
+                </span>
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPetStudioMode('edit');
+                      setPetStudioOpen(true);
+                    }}
+                    className="flex items-center gap-1 rounded-2xl bg-white/85 px-3 py-1.5 text-xs font-bold text-[var(--brand-secondary)] border border-white hover:bg-white transition"
+                  >
+                    <Palette className="h-3.5 w-3.5" /> 換品種 / 捏毛色
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!eff.isVip && pets.length >= 1) {
+                        openPaywall('Trigger C：一般版僅支援 1 隻毛孩檔案，升級 PRO 即可新增更多毛孩！');
+                      } else {
+                        setPetStudioMode('create');
+                        setPetStudioOpen(true);
+                      }
+                    }}
+                    className="flex items-center gap-1 rounded-2xl bg-[var(--brand-primary)] px-3.5 py-1.5 text-xs font-bold text-white shadow-sm hover:brightness-105 transition"
+                  >
+                    <Plus className="h-3.5 w-3.5" /> 新增毛孩
+                  </button>
+                </div>
               </div>
 
               <div className="flex flex-wrap gap-2">
                 {pets.map((pet) => {
-                  const selected = pet.id === selectedPetId;
+                  const selected = pet.id === selectedPet.id;
                   return (
                     <button
                       key={pet.id}
@@ -939,57 +1079,13 @@ export default function App() {
                           : 'bg-white/75 text-[var(--ink-primary)] hover:bg-white border border-white'
                       }`}
                     >
-                      {pet.species === 'other' ? (
-                        <span>{pet.avatar_emoji}</span>
-                      ) : (
-                        <img
-                          src={getPetMascotSrc(pet.species)}
-                          alt={pet.name}
-                          className="h-6 w-6 rounded-full bg-white/90 object-contain p-0.5 shadow-sm"
-                          draggable={false}
-                        />
-                      )}
+                      <PetAvatarBadge pet={pet} sizeClass="h-6 w-6" />
                       <span>{pet.name}</span>
-                      {pet.breed && <span className="opacity-70">({pet.breed})</span>}
+                      {pet.breed && <span className="opacity-75">({pet.breed})</span>}
                     </button>
                   );
                 })}
               </div>
-
-              {showAddPet && (
-                <form onSubmit={handleAddPet} className="mt-3 grid grid-cols-1 sm:grid-cols-4 gap-2 pt-3 border-t border-white/70">
-                  <input
-                    type="text"
-                    required
-                    value={newPetName}
-                    onChange={(e) => setNewPetName(e.target.value)}
-                    placeholder="毛孩名字（如 麻糬）"
-                    className="rounded-xl border border-white bg-white/90 px-3 py-2 text-xs outline-none"
-                  />
-                  <select
-                    value={newPetSpecies}
-                    onChange={(e) => setNewPetSpecies(e.target.value as 'dog' | 'cat' | 'other')}
-                    className="rounded-xl border border-white bg-white/90 px-3 py-2 text-xs outline-none"
-                  >
-                    <option value="dog">🐶 狗狗</option>
-                    <option value="cat">🐱 貓咪</option>
-                    <option value="other">🐾 其他毛孩</option>
-                  </select>
-                  <input
-                    type="text"
-                    value={newPetBreed}
-                    onChange={(e) => setNewPetBreed(e.target.value)}
-                    placeholder="品種（選填）"
-                    className="rounded-xl border border-white bg-white/90 px-3 py-2 text-xs outline-none"
-                  />
-                  <button
-                    type="submit"
-                    className="rounded-xl bg-[var(--brand-primary)] px-3 py-2 text-xs font-bold text-white"
-                  >
-                    確認新增
-                  </button>
-                </form>
-              )}
             </div>
 
             {/* Today Summary Metric Card with Interactive 3D Pet Companion */}
@@ -1072,14 +1168,26 @@ export default function App() {
                 </div>
               </div>
 
-              <div className="shrink-0 rounded-[24px] bg-white/55 px-4 py-3 border border-white/80 shadow-inner">
+              <div className="shrink-0 flex flex-col items-center gap-2 rounded-[24px] bg-white/55 px-4 py-3 border border-white/80 shadow-inner">
                 <PetCompanion3D
                   species={selectedPet.species}
+                  breed={selectedPet.breed}
+                  appearance={selectedPet.appearance}
                   petName={selectedPet.name}
                   pendingCount={pendingCount}
                   doneCount={doneCount}
                   totalCount={filteredSchedules.length}
                 />
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPetStudioMode('edit');
+                    setPetStudioOpen(true);
+                  }}
+                  className="inline-flex items-center gap-1 rounded-full bg-white/90 px-3 py-1 text-[10px] font-bold text-[var(--brand-secondary)] border border-white shadow-sm hover:bg-white transition"
+                >
+                  <Palette className="h-3 w-3" /> 換品種・捏毛色・拍照配色
+                </button>
               </div>
             </div>
 
@@ -1089,6 +1197,8 @@ export default function App() {
                 <div className="liquid-glass rounded-[24px] p-7 flex flex-col items-center gap-2 text-center text-sm text-[var(--ink-secondary)]">
                   <PetCompanion3D
                     species={selectedPet.species}
+                    breed={selectedPet.breed}
+                    appearance={selectedPet.appearance}
                     petName={selectedPet.name}
                     pendingCount={0}
                     doneCount={0}
@@ -1204,6 +1314,8 @@ export default function App() {
                 <div className="flex items-center gap-3">
                   <PetCompanion3D
                     species={selectedPet.species}
+                    breed={selectedPet.breed}
+                    appearance={selectedPet.appearance}
                     petName={selectedPet.name}
                     pendingCount={pendingCount}
                     doneCount={doneCount}
@@ -1222,8 +1334,8 @@ export default function App() {
                 </div>
                 <div className="rounded-2xl bg-white/80 px-3.5 py-2 text-xs font-bold">
                   本月額度：
-                  {context?.entitlement.isVip ? (
-                    <span className="text-[var(--status-ok)] ml-1">VIP 無限次</span>
+                  {eff.isVip ? (
+                    <span className="text-[var(--status-ok)] ml-1">PRO 無限次</span>
                   ) : (
                     <span className="text-[var(--brand-primary)] ml-1">
                       {context ? `${context.entitlement.ocrUsedThisMonth} / 3 次` : '免費試用（登入追蹤 3 次/月）'}
@@ -1321,7 +1433,7 @@ export default function App() {
                         required
                         value={ocrForm.medicationName}
                         onChange={(e) => setOcrForm({ ...ocrForm, medicationName: e.target.value })}
-                        className={`w-full rounded-xl px-3 py-2 text-xs outline-none ${highlightClass(ocrDraft.medicationName.confidenceLevel)}`}
+                        className={`w-full rounded-2xl px-3 py-2 text-xs outline-none ${highlightClass(ocrDraft.medicationName.confidenceLevel)}`}
                       />
                     </div>
                     <div>
@@ -1331,7 +1443,7 @@ export default function App() {
                         value={ocrForm.clinicName}
                         onChange={(e) => setOcrForm({ ...ocrForm, clinicName: e.target.value })}
                         placeholder={ocrDraft.clinicName.confidenceLevel === 'low' ? '信心度不足，請手動對照藥袋填寫' : ''}
-                        className={`w-full rounded-xl px-3 py-2 text-xs outline-none ${highlightClass(ocrDraft.clinicName.confidenceLevel)}`}
+                        className={`w-full rounded-2xl px-3 py-2 text-xs outline-none ${highlightClass(ocrDraft.clinicName.confidenceLevel)}`}
                       />
                     </div>
                     <div>
@@ -1342,7 +1454,7 @@ export default function App() {
                         value={ocrForm.dosageText}
                         onChange={(e) => setOcrForm({ ...ocrForm, dosageText: e.target.value })}
                         placeholder="請依藥袋填寫（如：每次 1 顆・每日 2 次）"
-                        className={`w-full rounded-xl px-3 py-2 text-xs outline-none ${highlightClass(ocrDraft.dosageText.confidenceLevel)}`}
+                        className={`w-full rounded-2xl px-3 py-2 text-xs outline-none ${highlightClass(ocrDraft.dosageText.confidenceLevel)}`}
                       />
                     </div>
                     <div>
@@ -1355,7 +1467,7 @@ export default function App() {
                         value={ocrForm.totalDays}
                         onChange={(e) => setOcrForm({ ...ocrForm, totalDays: e.target.value })}
                         placeholder="必填天數（如 7）"
-                        className={`w-full rounded-xl px-3 py-2 text-xs outline-none ${highlightClass(ocrDraft.totalDays.confidenceLevel)}`}
+                        className={`w-full rounded-2xl px-3 py-2 text-xs outline-none ${highlightClass(ocrDraft.totalDays.confidenceLevel)}`}
                       />
                     </div>
                     <div>
@@ -1365,20 +1477,18 @@ export default function App() {
                         required
                         value={ocrForm.timesText}
                         onChange={(e) => setOcrForm({ ...ocrForm, timesText: e.target.value })}
-                        className="w-full rounded-xl border border-[#81C784] bg-[#E8F5E9] px-3 py-2 text-xs outline-none"
+                        className="w-full rounded-2xl border border-[#81C784] bg-[#E8F5E9] px-3 py-2 text-xs outline-none"
                       />
                     </div>
                     <div>
                       <label className="mb-1 block text-xs font-bold">飯前 / 飯後備註</label>
-                      <select
+                      <RoundedSelect
                         value={ocrForm.mealTiming}
-                        onChange={(e) => setOcrForm({ ...ocrForm, mealTiming: e.target.value })}
-                        className="w-full rounded-xl border border-[#81C784] bg-[#E8F5E9] px-3 py-2 text-xs outline-none"
-                      >
-                        <option value="after_meal">飯後照護</option>
-                        <option value="before_meal">飯前照護</option>
-                        <option value="before_bed">睡前照護</option>
-                      </select>
+                        options={OCR_MEAL_TIMING_OPTIONS}
+                        onChange={(v) => setOcrForm({ ...ocrForm, mealTiming: v })}
+                        triggerClassName="border-[#81C784] bg-[#E8F5E9]"
+                        ariaLabel="選擇飯前或飯後備註"
+                      />
                     </div>
                   </div>
 
@@ -1419,7 +1529,7 @@ export default function App() {
                     任何家人完成打卡後即時同步 Neon 雲端，其他成員即刻消退提醒、並透過資料庫鎖擋下重複餵藥。
                   </p>
                 </div>
-                {!context?.entitlement.isVip && (
+                {!eff.isVip && (
                   <button
                     type="button"
                     onClick={() => openPaywall('Trigger A：多人家庭同步為 VIP / PRO 專屬功能，升級後支援最多 10 人即時連線！')}
@@ -1453,7 +1563,7 @@ export default function App() {
 
                   <div className="mb-4">
                     <div className="text-xs font-bold text-[var(--ink-secondary)] mb-2">
-                      已連線成員（{members.length} / {context.entitlement.maxFamilyMembers}）
+                      已連線成員（{members.length} / {eff.maxFamilyMembers}）
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                       {members.map((m) => (
@@ -1525,8 +1635,8 @@ export default function App() {
                     歷史照護紀錄與回診摘要
                   </h2>
                   <p className="text-xs text-[var(--ink-secondary)]">
-                    {context?.entitlement.isVip
-                      ? 'VIP 永久完整保存所有打卡紀錄，並支援完整區間 PDF 匯出。'
+                    {eff.isVip
+                      ? 'PRO 永久完整保存所有打卡紀錄，並支援完整區間 PDF 匯出。'
                       : '一般版保留最近 14 天紀錄與當週單張摘要；升級 PRO 永久保存。'}
                   </p>
                 </div>
@@ -1539,7 +1649,7 @@ export default function App() {
                 </button>
               </div>
 
-              {historyLockedCount > 0 && !context?.entitlement.isVip && (
+              {historyLockedCount > 0 && !eff.isVip && (
                 <div className="mb-4 flex items-center justify-between gap-3 rounded-2xl bg-[var(--status-warn-bg)] border border-[var(--status-warn-border)] p-3.5 text-xs">
                   <span className="font-bold text-[var(--status-warn)]">
                     <Lock className="inline h-3.5 w-3.5 mr-1" />
@@ -1560,6 +1670,8 @@ export default function App() {
                   <div className="rounded-2xl bg-white/65 p-6 flex flex-col items-center gap-2 text-center text-xs text-[var(--ink-secondary)]">
                     <PetCompanion3D
                       species={selectedPet.species}
+                      breed={selectedPet.breed}
+                      appearance={selectedPet.appearance}
                       petName={selectedPet.name}
                       pendingCount={pendingCount}
                       doneCount={doneCount}
@@ -1606,9 +1718,10 @@ export default function App() {
             onUpdated={(ctx) => loadCloudWorkspace(ctx)}
             onLoggedOut={() => {
               setContext(null);
-              setPets(GUEST_DEFAULT_PETS);
-              setSelectedPetId('guest-pet-1');
-              setSchedules(GUEST_DEFAULT_SCHEDULES);
+              const localPets = loadInitialGuestPets();
+              setPets(localPets);
+              setSelectedPetId(localPets[0]?.id || 'guest-pet-1');
+              setSchedules(loadInitialGuestSchedules());
               setConflicts([]);
               setHistoryLogs([]);
               setMembers([]);
@@ -1623,6 +1736,15 @@ export default function App() {
       <LiquidGlassTabbar activeTab={activeTab} onChangeTab={setActiveTab} />
 
       {/* Modals */}
+      <PetAppearanceModal
+        open={petStudioOpen}
+        mode={petStudioMode}
+        initialPet={petStudioMode === 'edit' ? selectedPet : null}
+        saving={petSaving}
+        onClose={() => setPetStudioOpen(false)}
+        onSave={handleSavePetStudio}
+      />
+
       <ScheduleEditorModal
         open={scheduleModalOpen}
         mode={scheduleModalMode}
@@ -1660,7 +1782,7 @@ export default function App() {
         pets={pets}
         logs={historyLogs}
         onClose={() => setReportOpen(false)}
-        onUpgrade={() => openPaywall('升級 PRO 解鎖完整歷史區間 PDF 報表！')}
+        onUpgrade={() => openPaywall('完整無限期 PDF 獸醫交接報告為 VIP / PRO 專屬功能')}
       />
     </div>
   );
